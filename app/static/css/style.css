@@ -81,8 +81,6 @@ p { color: var(--text-secondary); }
 
 /* ----- Layout ----- */
 .app-layout {
-  display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
   min-height: 100vh;
 }
 
@@ -1107,9 +1105,7 @@ td a:hover {
 
 /* ----- Responsive ----- */
 @media (max-width: 768px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-  }
+
 
   .sidebar {
     transform: translateX(-100%);
