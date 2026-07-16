@@ -36,7 +36,7 @@
     <div class="project-card-footer">
       <span class="badge badge-{{ project.status }}">{{ project.status|capitalize }}</span>
       <span>
-        Created by {{ project.creator.name }} &middot; {{ project.created_at.strftime('%b %d, %Y') }}
+        Created by {{ project.creator.name }} &middot; {{ project.created_at|date_ist }}
       </span>
     </div>
   </div>

@@ -30,7 +30,7 @@
               <circle cx="12" cy="12" r="10"/>
               <polyline points="12 6 12 12 16 14"/>
             </svg>
-            {{ log.timestamp.strftime('%b %d, %Y %H:%M') }}
+            {{ log.timestamp|datetime_ist }}
           </td>
           <td>{{ log.user_email }}</td>
           <td><span class="badge badge-active">{{ log.action }}</span></td>

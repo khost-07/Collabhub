@@ -14,7 +14,7 @@ from app.auth import require_login, NotAuthorizedException, NotFoundException, l
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+from app.common_templates import templates
 
 
 def get_gemini_api_key(db: Session) -> Optional[str]:

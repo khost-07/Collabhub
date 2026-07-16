@@ -9,7 +9,7 @@
       <h1 class="page-title">{{ project.name }}</h1>
       <span class="badge badge-{{ project.status }}">{{ project.status|capitalize }}</span>
     </div>
-    <p class="page-subtitle">Created by {{ project.creator.name }} &middot; {{ project.created_at.strftime('%b %d, %Y') }}</p>
+    <p class="page-subtitle">Created by {{ project.creator.name }} &middot; {{ project.created_at|date_ist }}</p>
   </div>
   <div class="page-actions">
     {% if user.role in ('admin', 'manager') %}
@@ -224,7 +224,7 @@
               {% endif %}
             </td>
             <td>{{ doc.uploader.name if doc.uploader else 'Unknown' }}</td>
-            <td>{{ doc.created_at.strftime('%b %d, %Y') }}</td>
+            <td>{{ doc.created_at|date_ist }}</td>
             {% if user.role in ('admin', 'manager') %}
             <td>
               <form method="POST" action="/documents/{{ doc.id }}/delete" style="display:inline" id="deleteDoc{{ doc.id }}Form">

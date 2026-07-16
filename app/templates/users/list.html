@@ -36,7 +36,7 @@
           </td>
           <td>{{ u.email }}</td>
           <td><span class="badge badge-{{ u.role }}">{{ u.role|replace('_', ' ')|title }}</span></td>
-          <td>{{ u.created_at.strftime('%b %d, %Y') }}</td>
+          <td>{{ u.created_at|date_ist }}</td>
           <td>
             {% if u.id == user.id %}
               <span style="color:var(--text-muted);font-size:0.8125rem;font-style:italic">Current user</span>

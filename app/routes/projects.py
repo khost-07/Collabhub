@@ -15,7 +15,7 @@ from app.auth import (
 )
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+from app.common_templates import templates
 
 AVAILABLE_ROLES = [
     {"id": "admin", "name": "Admin"},

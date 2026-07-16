@@ -17,7 +17,7 @@ from app.auth import (
 from app.routes.ai import extract_text, summarize_document, get_gemini_api_key
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+from app.common_templates import templates
 
 # Allowed file types
 ALLOWED_EXTENSIONS = {"pdf", "txt"}

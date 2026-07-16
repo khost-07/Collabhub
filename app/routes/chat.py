@@ -13,7 +13,7 @@ from jose import jwt, JWTError
 from app.config import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+from app.common_templates import templates
 
 
 class ConnectionManager:

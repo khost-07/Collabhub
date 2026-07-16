@@ -79,7 +79,7 @@
       <tbody>
         {% for log in recent_logs %}
         <tr>
-          <td>{{ log.timestamp.strftime('%b %d, %Y %H:%M') }}</td>
+          <td>{{ log.timestamp|datetime_ist }}</td>
           <td>{{ log.user_email }}</td>
           <td><span class="badge badge-active">{{ log.action }}</span></td>
           <td>{{ log.details }}</td>
