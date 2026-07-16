@@ -365,6 +365,8 @@
         <div class="chat-item-avatar">
           {% if conv.type == 'group' %}
             G
+          {% elif conv.type == 'community' %}
+            C
           {% else %}
             {{ conv.name[0]|upper if conv.name else 'U' }}
           {% endif %}

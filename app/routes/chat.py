@@ -77,7 +77,26 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
     message = request.query_params.get("message", "")
     message_type = request.query_params.get("type", "info")
 
-    # Fetch all conversations the user belongs to
+    enriched_conversations = []
+
+    # 1. Prepend the global Community Chat (ID 9999) to the list
+    community = db.query(Conversation).filter_by(id=9999).first()
+    if community:
+        latest_msg = (
+            db.query(Message)
+            .filter(Message.conversation_id == community.id)
+            .order_by(Message.timestamp.desc())
+            .first()
+        )
+        enriched_conversations.append({
+            "id": community.id,
+            "type": community.type,
+            "name": community.name,
+            "latest_message": latest_msg.content if latest_msg else "Welcome to the Community Chat!",
+            "latest_message_time": latest_msg.timestamp if latest_msg else None,
+        })
+
+    # Fetch all user conversations (DMs and Groups)
     conversations = (
         db.query(Conversation)
         .join(ConversationMember)
@@ -86,15 +105,16 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    enriched_conversations = []
     for conv in conversations:
+        # Skip community chat since it's already prepended at the top
+        if conv.id == 9999:
+            continue
+
         conv_name = conv.name
         if conv.type == "dm":
-            # The name displayed for a DM is the other participant's name
             other_member = [m for m in conv.members if m.id != user.id]
             conv_name = other_member[0].name if other_member else "Unknown User"
         
-        # Get the latest message (if any) to display in the list
         latest_msg = (
             db.query(Message)
             .filter(Message.conversation_id == conv.id)
@@ -121,26 +141,36 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
     if active_conv_id_str:
         try:
             active_conv_id = int(active_conv_id_str)
-            # Verify membership
-            is_member = db.query(ConversationMember).filter_by(
-                conversation_id=active_conv_id, user_id=user.id
-            ).first()
-            
-            if is_member:
-                conv_obj = db.query(Conversation).filter_by(id=active_conv_id).first()
+            if active_conv_id == 9999:
+                conv_obj = db.query(Conversation).filter_by(id=9999).first()
                 if conv_obj:
-                    # Enrich active conversation name
-                    display_name = conv_obj.name
-                    if conv_obj.type == "dm":
-                        other = [m for m in conv_obj.members if m.id != user.id]
-                        display_name = other[0].name if other else "Unknown User"
-                    
                     active_conversation = {
                         "id": conv_obj.id,
                         "type": conv_obj.type,
-                        "display_name": display_name,
+                        "display_name": conv_obj.name,
                     }
-                    active_conversation_members = conv_obj.members
+                    # For community, all active users in the system are members
+                    active_conversation_members = db.query(User).order_by(User.name).all()
+            else:
+                # Verify membership
+                is_member = db.query(ConversationMember).filter_by(
+                    conversation_id=active_conv_id, user_id=user.id
+                ).first()
+                
+                if is_member:
+                    conv_obj = db.query(Conversation).filter_by(id=active_conv_id).first()
+                    if conv_obj:
+                        display_name = conv_obj.name
+                        if conv_obj.type == "dm":
+                            other = [m for m in conv_obj.members if m.id != user.id]
+                            display_name = other[0].name if other else "Unknown User"
+                        
+                        active_conversation = {
+                            "id": conv_obj.id,
+                            "type": conv_obj.type,
+                            "display_name": display_name,
+                        }
+                        active_conversation_members = conv_obj.members
         except ValueError:
             pass
 
@@ -291,13 +321,14 @@ async def create_group(request: Request, db: Session = Depends(get_db)):
 def get_history(conversation_id: int, request: Request, db: Session = Depends(get_db)):
     user = require_login(request, db)
     
-    # Security check: Verify user is a member of the conversation
-    is_member = db.query(ConversationMember).filter_by(
-        conversation_id=conversation_id, user_id=user.id
-    ).first()
-    
-    if not is_member:
-        raise NotAuthorizedException("You do not have access to this conversation.")
+    if conversation_id != 9999:
+        # Security check: Verify user is a member of the conversation
+        is_member = db.query(ConversationMember).filter_by(
+            conversation_id=conversation_id, user_id=user.id
+        ).first()
+        
+        if not is_member:
+            raise NotAuthorizedException("You do not have access to this conversation.")
 
     messages = (
         db.query(Message)
@@ -334,15 +365,16 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
             await websocket.close(code=4003)  # Forbidden
             return
 
-        # 2. Verify membership
-        is_member = db.query(ConversationMember).filter_by(
-            conversation_id=conversation_id, user_id=user.id
-        ).first()
-        
-        if not is_member:
-            await websocket.accept()
-            await websocket.close(code=4003)  # Forbidden
-            return
+        # 2. Verify membership (skip for global community chat 9999)
+        if conversation_id != 9999:
+            is_member = db.query(ConversationMember).filter_by(
+                conversation_id=conversation_id, user_id=user.id
+            ).first()
+            
+            if not is_member:
+                await websocket.accept()
+                await websocket.close(code=4003)  # Forbidden
+                return
 
         # 3. Accept connection and register
         await manager.connect(websocket, conversation_id, user.id)
@@ -356,14 +388,15 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
                     continue
 
                 # 4. Strict member-check before persisting or broadcasting
-                db.expire_all()
-                is_still_member = db.query(ConversationMember).filter_by(
-                    conversation_id=conversation_id, user_id=user.id
-                ).first()
-                
-                if not is_still_member:
-                    await websocket.close(code=4003)
-                    break
+                if conversation_id != 9999:
+                    db.expire_all()
+                    is_still_member = db.query(ConversationMember).filter_by(
+                        conversation_id=conversation_id, user_id=user.id
+                    ).first()
+                    
+                    if not is_still_member:
+                        await websocket.close(code=4003)
+                        break
 
                 # 5. Persist message
                 msg = Message(

@@ -216,3 +216,21 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """Create all tables that do not already exist."""
     Base.metadata.create_all(bind=engine)
+
+    # Ensure a global community conversation exists
+    db = SessionLocal()
+    try:
+        community = db.query(Conversation).filter_by(type="community").first()
+        if not community:
+            # We use a fixed ID 9999 for the global community chat to make it easy to link/reference
+            community = Conversation(
+                id=9999,
+                type="community",
+                name="Community Chat",
+            )
+            db.add(community)
+            db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()

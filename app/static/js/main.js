@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
   /* ----- Prevent Double Submission ----- */
-  document.querySelectorAll('form').forEach(function (form) {
+  document.querySelectorAll('form:not(#chatForm):not(.no-disable)').forEach(function (form) {
     form.addEventListener('submit', function () {
       const submitBtns = form.querySelectorAll('button[type="submit"], input[type="submit"]');
       submitBtns.forEach(function (btn) {
