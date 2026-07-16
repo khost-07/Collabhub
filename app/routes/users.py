@@ -115,18 +115,19 @@ def signup_page(request: Request, db: Session = Depends(get_db)):
 @router.post("/signup")
 async def signup_post(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
+    org_name = form.get("org_name", "").strip()
     name = form.get("name", "").strip()
     email = form.get("email", "").strip().lower()
     password = form.get("password", "")
     confirm_password = form.get("confirm_password", "")
 
     # Validation
-    if not name or not email or not password or not confirm_password:
+    if not org_name or not name or not email or not password or not confirm_password:
         return templates.TemplateResponse(
             "signup.html",
             {
                 "request": request,
-                "message": "All fields are required.",
+                "message": "All fields including Organization Name are required.",
                 "message_type": "error",
             },
         )
@@ -162,12 +163,19 @@ async def signup_post(request: Request, db: Session = Depends(get_db)):
             },
         )
 
-    is_ceo = form.get("is_ceo") == "true"
+    from app.models import Organization
+
+    # Create Organization
+    org = Organization(name=org_name)
+    db.add(org)
+    db.flush()  # Populate org.id
+
     new_user = User(
         name=name,
         email=email,
         hashed_password=hash_password(password),
-        role="admin" if is_ceo else "guest",
+        role="admin",
+        organization_id=org.id,
     )
     db.add(new_user)
     db.commit()
@@ -182,16 +190,10 @@ async def signup_post(request: Request, db: Session = Depends(get_db)):
         resource_id=new_user.id,
     )
 
-    if is_ceo:
-        return RedirectResponse(
-            url="/login?message=CEO+Account+created.+Please+log+in+to+complete+onboarding&type=success&onboard=true",
-            status_code=303,
-        )
-    else:
-        return RedirectResponse(
-            url="/login?message=Account+created+successfully&type=success",
-            status_code=303,
-        )
+    return RedirectResponse(
+        url="/login?message=Organization+registered.+Log+in+to+onboard+employees&type=success&onboard=true",
+        status_code=303,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -217,22 +219,28 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
     stats: dict = {}
     if user.role == "admin":
-        stats["projects"] = db.query(func.count(Project.id)).scalar() or 0
-        stats["documents"] = db.query(func.count(Document.id)).scalar() or 0
-        stats["users"] = db.query(func.count(User.id)).scalar() or 0
+        stats["projects"] = db.query(func.count(Project.id)).filter(Project.organization_id == user.organization_id).scalar() or 0
+        stats["documents"] = (
+            db.query(func.count(Document.id))
+            .join(Project)
+            .filter(Project.organization_id == user.organization_id)
+            .scalar() or 0
+        )
+        stats["users"] = db.query(func.count(User.id)).filter(User.organization_id == user.organization_id).scalar() or 0
         stats["my_projects"] = stats["projects"]
         recent_logs = (
             db.query(AuditLog)
+            .filter(AuditLog.organization_id == user.organization_id)
             .order_by(AuditLog.timestamp.desc())
             .limit(10)
             .all()
         )
     elif user.role == "manager":
         manager_projects = (
-            db.query(Project).filter(Project.created_by == user.id).all()
+            db.query(Project).filter(Project.created_by == user.id, Project.organization_id == user.organization_id).all()
         )
         manager_project_ids = [p.id for p in manager_projects]
-        stats["projects"] = db.query(func.count(Project.id)).scalar() or 0
+        stats["projects"] = db.query(func.count(Project.id)).filter(Project.organization_id == user.organization_id).scalar() or 0
         stats["my_projects"] = len(manager_projects)
         stats["documents"] = (
             db.query(func.count(Document.id))
@@ -242,7 +250,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         ) if manager_project_ids else 0
         recent_logs = (
             db.query(AuditLog)
-            .filter(AuditLog.user_id == user.id)
+            .filter(AuditLog.user_id == user.id, AuditLog.organization_id == user.organization_id)
             .order_by(AuditLog.timestamp.desc())
             .limit(10)
             .all()
@@ -252,10 +260,11 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         member_project_ids = [
             row.project_id
             for row in db.query(ProjectRole.project_id)
-            .filter(ProjectRole.role == user.role)
+            .join(Project)
+            .filter(ProjectRole.role == user.role, Project.organization_id == user.organization_id)
             .all()
         ]
-        stats["projects"] = db.query(func.count(Project.id)).scalar() or 0
+        stats["projects"] = db.query(func.count(Project.id)).filter(Project.organization_id == user.organization_id).scalar() or 0
         stats["my_projects"] = len(member_project_ids)
         stats["documents"] = (
             db.query(func.count(Document.id))
@@ -265,7 +274,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         ) if member_project_ids else 0
         recent_logs = (
             db.query(AuditLog)
-            .filter(AuditLog.user_id == user.id)
+            .filter(AuditLog.user_id == user.id, AuditLog.organization_id == user.organization_id)
             .order_by(AuditLog.timestamp.desc())
             .limit(10)
             .all()
@@ -290,7 +299,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 @router.get("/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     user = require_admin(request, db)
-    users = db.query(User).order_by(User.created_at.desc()).all()
+    users = db.query(User).filter(User.organization_id == user.organization_id).order_by(User.created_at.desc()).all()
     message = request.query_params.get("message", "")
     message_type = request.query_params.get("type", "info")
     return templates.TemplateResponse(
@@ -327,7 +336,7 @@ async def update_user_role(
             status_code=303,
         )
 
-    target_user = db.query(User).filter(User.id == user_id).first()
+    target_user = db.query(User).filter(User.id == user_id, User.organization_id == admin_user.organization_id).first()
     if not target_user:
         return RedirectResponse(
             url="/users?message=User+not+found&type=error",
@@ -362,7 +371,7 @@ async def update_user_role(
 @router.get("/audit")
 def list_audit_logs(request: Request, db: Session = Depends(get_db)):
     user = require_admin(request, db)
-    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).all()
+    logs = db.query(AuditLog).filter(AuditLog.organization_id == user.organization_id).order_by(AuditLog.timestamp.desc()).all()
     return templates.TemplateResponse(
         "audit/log.html",
         {
@@ -384,8 +393,8 @@ def onboarding_page(request: Request, db: Session = Depends(get_db)):
     message = request.query_params.get("message", "")
     message_type = request.query_params.get("type", "info")
 
-    # Fetch all employees added so far (all users except this CEO)
-    employees = db.query(User).filter(User.id != user.id).order_by(User.created_at.desc()).all()
+    # Fetch all employees added so far (all users except this CEO in the same org)
+    employees = db.query(User).filter(User.organization_id == user.organization_id, User.id != user.id).order_by(User.created_at.desc()).all()
 
     return templates.TemplateResponse(
         "onboarding.html",
@@ -441,6 +450,7 @@ async def onboarding_add_employee(request: Request, db: Session = Depends(get_db
         email=email,
         hashed_password=hash_password(password),
         role=role,
+        organization_id=user.organization_id,
     )
     db.add(new_employee)
     db.commit()

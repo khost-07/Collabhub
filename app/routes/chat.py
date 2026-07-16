@@ -79,26 +79,37 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
 
     enriched_conversations = []
 
-    # 1. Prepend the global Community Chat (ID 9999) to the list
-    community = db.query(Conversation).filter_by(id=9999).first()
-    if community:
-        latest_msg = (
-            db.query(Message)
-            .filter(Message.conversation_id == community.id)
-            .order_by(Message.timestamp.desc())
-            .first()
+    # 1. Fetch or dynamically create the community chat for the user's organization
+    community = db.query(Conversation).filter_by(type="community", organization_id=user.organization_id).first()
+    if not community:
+        community = Conversation(
+            type="community",
+            name="Community Chat",
+            organization_id=user.organization_id
         )
-        enriched_conversations.append({
-            "id": community.id,
-            "type": community.type,
-            "name": community.name,
-            "latest_message": latest_msg.content if latest_msg else "Welcome to the Community Chat!",
-            "latest_message_time": latest_msg.timestamp if latest_msg else None,
-        })
+        db.add(community)
+        db.commit()
+        db.refresh(community)
 
-    # Fetch all user conversations (DMs and Groups)
+    # Prepend community chat to the top of list
+    latest_msg = (
+        db.query(Message)
+        .filter(Message.conversation_id == community.id)
+        .order_by(Message.timestamp.desc())
+        .first()
+    )
+    enriched_conversations.append({
+        "id": community.id,
+        "type": community.type,
+        "name": community.name,
+        "latest_message": latest_msg.content if latest_msg else "Welcome to the Community Chat!",
+        "latest_message_time": latest_msg.timestamp if latest_msg else None,
+    })
+
+    # Fetch all user conversations (DMs and Groups) in this organization
     conversations = (
         db.query(Conversation)
+        .filter(Conversation.organization_id == user.organization_id)
         .join(ConversationMember)
         .filter(ConversationMember.user_id == user.id)
         .order_by(Conversation.created_at.desc())
@@ -107,7 +118,7 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
 
     for conv in conversations:
         # Skip community chat since it's already prepended at the top
-        if conv.id == 9999:
+        if conv.type == "community":
             continue
 
         conv_name = conv.name
@@ -130,8 +141,8 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
             "latest_message_time": latest_msg.timestamp if latest_msg else None,
         })
 
-    # Fetch all other users for starting DMs or creating groups
-    all_users = db.query(User).filter(User.id != user.id).order_by(User.name).all()
+    # Fetch all other users inside the same organization for starting DMs or creating groups
+    all_users = db.query(User).filter(User.organization_id == user.organization_id, User.id != user.id).order_by(User.name).all()
 
     # Active conversation configuration
     active_conv_id_str = request.query_params.get("id")
@@ -141,25 +152,23 @@ def chat_home(request: Request, db: Session = Depends(get_db)):
     if active_conv_id_str:
         try:
             active_conv_id = int(active_conv_id_str)
-            if active_conv_id == 9999:
-                conv_obj = db.query(Conversation).filter_by(id=9999).first()
-                if conv_obj:
+            conv_obj = db.query(Conversation).filter_by(id=active_conv_id, organization_id=user.organization_id).first()
+            if conv_obj:
+                if conv_obj.type == "community":
                     active_conversation = {
                         "id": conv_obj.id,
                         "type": conv_obj.type,
                         "display_name": conv_obj.name,
                     }
-                    # For community, all active users in the system are members
-                    active_conversation_members = db.query(User).order_by(User.name).all()
-            else:
-                # Verify membership
-                is_member = db.query(ConversationMember).filter_by(
-                    conversation_id=active_conv_id, user_id=user.id
-                ).first()
-                
-                if is_member:
-                    conv_obj = db.query(Conversation).filter_by(id=active_conv_id).first()
-                    if conv_obj:
+                    # For community, all active users in the same organization are members
+                    active_conversation_members = db.query(User).filter(User.organization_id == user.organization_id).order_by(User.name).all()
+                else:
+                    # Verify membership
+                    is_member = db.query(ConversationMember).filter_by(
+                        conversation_id=active_conv_id, user_id=user.id
+                    ).first()
+                    
+                    if is_member:
                         display_name = conv_obj.name
                         if conv_obj.type == "dm":
                             other = [m for m in conv_obj.members if m.id != user.id]
@@ -207,14 +216,14 @@ async def create_dm(request: Request, db: Session = Depends(get_db)):
     if recipient_id == user.id:
         return RedirectResponse(url="/chat?message=Cannot+start+chat+with+yourself&type=error", status_code=303)
 
-    recipient = db.query(User).filter_by(id=recipient_id).first()
+    recipient = db.query(User).filter_by(id=recipient_id, organization_id=user.organization_id).first()
     if not recipient:
         return RedirectResponse(url="/chat?message=User+not+found&type=error", status_code=303)
 
-    # Check if a 1-to-1 DM already exists between these users
+    # Check if a 1-to-1 DM already exists in this organization between these users
     user_dms = (
         db.query(Conversation)
-        .filter(Conversation.type == "dm")
+        .filter(Conversation.type == "dm", Conversation.organization_id == user.organization_id)
         .join(ConversationMember)
         .filter(ConversationMember.user_id == user.id)
         .all()
@@ -231,7 +240,7 @@ async def create_dm(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url=f"/chat?id={existing_dm.id}", status_code=303)
 
     # Create new DM
-    conv = Conversation(type="dm", created_by=user.id)
+    conv = Conversation(type="dm", created_by=user.id, organization_id=user.organization_id)
     db.add(conv)
     db.flush()  # Populate ID
     
@@ -268,7 +277,6 @@ async def create_group(request: Request, db: Session = Depends(get_db)):
 
     raw_member_ids = form.getlist("member_ids")
     if not raw_member_ids:
-        # fallback
         single = form.get("member_ids")
         if single:
             raw_member_ids = [single]
@@ -281,18 +289,18 @@ async def create_group(request: Request, db: Session = Depends(get_db)):
             continue
 
     # Create group
-    conv = Conversation(type="group", name=name, created_by=user.id)
+    conv = Conversation(type="group", name=name, created_by=user.id, organization_id=user.organization_id)
     db.add(conv)
     db.flush()
 
     # Add creator
     db.add(ConversationMember(conversation_id=conv.id, user_id=user.id))
     
-    # Add other valid members
+    # Add other valid members belonging to the same organization
     added_count = 1
     for mid in member_ids:
         if mid != user.id:
-            exists = db.query(User).filter_by(id=mid).first()
+            exists = db.query(User).filter_by(id=mid, organization_id=user.organization_id).first()
             if exists:
                 db.add(ConversationMember(conversation_id=conv.id, user_id=mid))
                 added_count += 1
@@ -320,8 +328,12 @@ async def create_group(request: Request, db: Session = Depends(get_db)):
 @router.get("/chat/conversations/{conversation_id}/history")
 def get_history(conversation_id: int, request: Request, db: Session = Depends(get_db)):
     user = require_login(request, db)
+
+    conv = db.query(Conversation).filter_by(id=conversation_id, organization_id=user.organization_id).first()
+    if not conv:
+        raise NotFoundException()
     
-    if conversation_id != 9999:
+    if conv.type != "community":
         # Security check: Verify user is a member of the conversation
         is_member = db.query(ConversationMember).filter_by(
             conversation_id=conversation_id, user_id=user.id
@@ -365,8 +377,15 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
             await websocket.close(code=4003)  # Forbidden
             return
 
-        # 2. Verify membership (skip for global community chat 9999)
-        if conversation_id != 9999:
+        # 2. Verify conversation and organization boundaries
+        conv = db.query(Conversation).filter_by(id=conversation_id, organization_id=user.organization_id).first()
+        if not conv:
+            await websocket.accept()
+            await websocket.close(code=4003)  # Forbidden
+            return
+
+        # 3. Verify membership for non-community rooms
+        if conv.type != "community":
             is_member = db.query(ConversationMember).filter_by(
                 conversation_id=conversation_id, user_id=user.id
             ).first()
@@ -376,7 +395,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
                 await websocket.close(code=4003)  # Forbidden
                 return
 
-        # 3. Accept connection and register
+        # 4. Accept connection and register
         await manager.connect(websocket, conversation_id, user.id)
 
         try:
@@ -387,8 +406,8 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
                 if not content:
                     continue
 
-                # 4. Strict member-check before persisting or broadcasting
-                if conversation_id != 9999:
+                # 5. Strict member-check before persisting or broadcasting
+                if conv.type != "community":
                     db.expire_all()
                     is_still_member = db.query(ConversationMember).filter_by(
                         conversation_id=conversation_id, user_id=user.id
@@ -398,7 +417,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
                         await websocket.close(code=4003)
                         break
 
-                # 5. Persist message
+                # 6. Persist message
                 msg = Message(
                     conversation_id=conversation_id,
                     sender_id=user.id,
@@ -409,7 +428,7 @@ async def chat_ws(websocket: WebSocket, conversation_id: int):
                 db.commit()
                 db.refresh(msg)
 
-                # 6. Broadcast to participants
+                # 7. Broadcast to participants
                 await manager.broadcast(conversation_id, {
                     "id": msg.id,
                     "sender_id": user.id,

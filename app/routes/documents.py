@@ -35,6 +35,8 @@ def _get_file_extension(filename: str) -> str:
 
 def _check_project_access(user, project, db: Session) -> None:
     """Raise NotAuthorizedException if user cannot access this project."""
+    if project.organization_id != user.organization_id:
+        raise NotAuthorizedException("You do not have access to this project.")
     if user.role == "admin":
         return
     if user.role == "manager" and project.created_by == user.id:
@@ -64,7 +66,7 @@ async def upload_document(
     db: Session = Depends(get_db),
 ):
     user = require_login(request, db)
-    project = db.query(Project).filter(Project.id == project_id).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
 
@@ -155,7 +157,7 @@ def download_document(
         raise NotFoundException()
 
     # Access check via the document's project
-    project = db.query(Project).filter(Project.id == document.project_id).first()
+    project = db.query(Project).filter(Project.id == document.project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
     _check_project_access(user, project, db)
@@ -188,7 +190,12 @@ def delete_document(
     db: Session = Depends(get_db),
 ):
     user = require_manager_or_admin(request, db)
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        db.query(Document)
+        .join(Project)
+        .filter(Document.id == document_id, Project.organization_id == user.organization_id)
+        .first()
+    )
     if not document:
         raise NotFoundException()
 

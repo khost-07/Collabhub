@@ -18,8 +18,8 @@
     CollabHub
   </div>
 
-  <h2 style="text-align:center;margin-bottom:8px">Create your account</h2>
-  <p style="text-align:center;color:var(--text-secondary);margin-bottom:24px">Get started with CollabHub today</p>
+  <h2 style="text-align:center;margin-bottom:8px">Register your Organization</h2>
+  <p style="text-align:center;color:var(--text-secondary);margin-bottom:24px">Create a new organization workspace on CollabHub</p>
 
   {% if error %}
   <div class="alert alert-error">
@@ -29,7 +29,12 @@
 
   <form method="POST" action="/signup" id="signupForm">
     <div class="form-group">
-      <label class="form-label" for="name">Full Name</label>
+      <label class="form-label" for="org_name">Organization Name</label>
+      <input class="form-input" type="text" id="org_name" name="org_name" required placeholder="Acme Corp" autocomplete="organization">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="name">Full Name (CEO / Admin)</label>
       <input class="form-input" type="text" id="name" name="name" required placeholder="John Doe" autocomplete="name">
     </div>
 
@@ -48,11 +53,6 @@
       <input class="form-input" type="password" id="confirm_password" name="confirm_password" required placeholder="••••••••" autocomplete="new-password">
     </div>
 
-    <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:12px;margin-bottom:12px">
-      <input type="checkbox" id="is_ceo" name="is_ceo" value="true" style="width:auto">
-      <label for="is_ceo" style="margin-bottom:0;cursor:pointer;color:var(--text-secondary)">Register as Organization CEO</label>
-    </div>
-
     <button type="submit" class="btn btn-primary" id="signupSubmit" style="width:100%;justify-content:center;margin-top:8px">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -60,7 +60,7 @@
         <line x1="20" y1="8" x2="20" y2="14"/>
         <line x1="23" y1="11" x2="17" y2="11"/>
       </svg>
-      Create Account
+      Create Organization
     </button>
   </form>
 

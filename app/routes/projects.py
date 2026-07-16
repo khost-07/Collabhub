@@ -34,6 +34,9 @@ AVAILABLE_ROLES = [
 
 def _check_project_access(user, project, db: Session) -> None:
     """Raise NotAuthorizedException if user cannot view this project."""
+    if project.organization_id != user.organization_id:
+        raise NotAuthorizedException("You do not have access to this project.")
+
     if user.role == "admin":
         return
 
@@ -69,6 +72,7 @@ def list_projects(request: Request, db: Session = Depends(get_db)):
         projects = (
             db.query(Project)
             .options(joinedload(Project.creator))
+            .filter(Project.organization_id == user.organization_id)
             .order_by(Project.created_at.desc())
             .all()
         )
@@ -82,6 +86,7 @@ def list_projects(request: Request, db: Session = Depends(get_db)):
         projects = (
             db.query(Project)
             .options(joinedload(Project.creator))
+            .filter(Project.organization_id == user.organization_id)
             .filter((Project.created_by == user.id) | Project.id.in_(allowed_project_ids))
             .order_by(Project.created_at.desc())
             .all()
@@ -96,6 +101,7 @@ def list_projects(request: Request, db: Session = Depends(get_db)):
         projects = (
             db.query(Project)
             .options(joinedload(Project.creator))
+            .filter(Project.organization_id == user.organization_id)
             .filter(Project.id.in_(role_project_ids))
             .order_by(Project.created_at.desc())
             .all()
@@ -159,6 +165,7 @@ async def create_project(request: Request, db: Session = Depends(get_db)):
         description=description,
         status=status,
         created_by=user.id,
+        organization_id=user.organization_id,
     )
     db.add(project)
     db.flush()  # populate ID
@@ -206,7 +213,7 @@ def project_detail(
             joinedload(Project.allowed_roles),
             joinedload(Project.documents).joinedload(Document.uploader),
         )
-        .filter(Project.id == project_id)
+        .filter(Project.id == project_id, Project.organization_id == user.organization_id)
         .first()
     )
     if not project:
@@ -246,7 +253,7 @@ def edit_project_form(
     db: Session = Depends(get_db),
 ):
     user = require_manager_or_admin(request, db)
-    project = db.query(Project).filter(Project.id == project_id).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
 
@@ -276,7 +283,7 @@ async def update_project(
     db: Session = Depends(get_db),
 ):
     user = require_manager_or_admin(request, db)
-    project = db.query(Project).filter(Project.id == project_id).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
 
@@ -315,7 +322,7 @@ def delete_project(
     db: Session = Depends(get_db),
 ):
     user = require_manager_or_admin(request, db)
-    project = db.query(Project).filter(Project.id == project_id).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
 
@@ -351,7 +358,7 @@ async def update_project_roles(
     db: Session = Depends(get_db),
 ):
     user = require_manager_or_admin(request, db)
-    project = db.query(Project).filter(Project.id == project_id).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
 

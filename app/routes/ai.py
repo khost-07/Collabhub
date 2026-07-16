@@ -165,29 +165,34 @@ async def search_post(request: Request, db: Session = Depends(get_db)):
             {"request": request, "user": user, "query": query, "results": []},
         )
 
-    # Determine which documents the user may access
+    # Determine which documents the user may access (isolated by organization_id)
     if user.role == "admin":
-        documents = db.query(Document).all()
+        documents = db.query(Document).join(Project).filter(Project.organization_id == user.organization_id).all()
     elif user.role == "manager":
         allowed_project_ids = (
             db.query(ProjectRole.project_id)
-            .filter(ProjectRole.role == "manager")
+            .join(Project)
+            .filter(ProjectRole.role == "manager", Project.organization_id == user.organization_id)
             .subquery()
         )
         documents = (
             db.query(Document)
             .join(Project)
+            .filter(Project.organization_id == user.organization_id)
             .filter((Project.created_by == user.id) | Document.project_id.in_(allowed_project_ids))
             .all()
         )
     else:
         allowed_project_ids = (
             db.query(ProjectRole.project_id)
-            .filter(ProjectRole.role == user.role)
+            .join(Project)
+            .filter(ProjectRole.role == user.role, Project.organization_id == user.organization_id)
             .subquery()
         )
         documents = (
             db.query(Document)
+            .join(Project)
+            .filter(Project.organization_id == user.organization_id)
             .filter(Document.project_id.in_(allowed_project_ids))
             .all()
         )
@@ -226,7 +231,7 @@ async def search_post(request: Request, db: Session = Depends(get_db)):
 def summarize_project_files(project_id: int, request: Request, db: Session = Depends(get_db)):
     user = require_login(request, db)
     
-    project = db.query(Project).filter(Project.id == project_id).first()
+    project = db.query(Project).filter(Project.id == project_id, Project.organization_id == user.organization_id).first()
     if not project:
         raise NotFoundException()
 
@@ -307,8 +312,11 @@ def summarize_project_files(project_id: int, request: Request, db: Session = Dep
 def chat_catch_up(conversation_id: int, request: Request, db: Session = Depends(get_db)):
     user = require_login(request, db)
 
-    # Verify membership (skip for global community chat 9999)
-    if conversation_id != 9999:
+    conv = db.query(Conversation).filter_by(id=conversation_id, organization_id=user.organization_id).first()
+    if not conv:
+        raise NotFoundException()
+
+    if conv.type != "community":
         is_member = db.query(ConversationMember).filter_by(
             conversation_id=conversation_id, user_id=user.id
         ).first()

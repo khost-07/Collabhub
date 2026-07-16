@@ -36,14 +36,20 @@ class Base(DeclarativeBase):
 
 
 # ---------------------------------------------------------------------------
-# Project Roles Table (mapped to ProjectRole model)
-# ---------------------------------------------------------------------------
-
-
-
-# ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
+    projects = relationship("Project", back_populates="organization", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="organization", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -56,7 +62,9 @@ class User(Base):
     role = Column(String(20), default="member", nullable=False)
     gemini_api_key = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
 
+    organization = relationship("Organization", back_populates="users")
     conversations = relationship("Conversation", secondary="conversation_members", back_populates="members")
 
     def __repr__(self) -> str:
@@ -79,7 +87,9 @@ class Project(Base):
         nullable=False,
     )
     files_summary = Column(Text, default="", nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
 
+    organization = relationship("Organization", back_populates="projects")
     creator = relationship("User", foreign_keys=[created_by])
     allowed_roles = relationship(
         "ProjectRole",
@@ -146,21 +156,25 @@ class AuditLog(Base):
     resource_id = Column(Integer, nullable=True)
     details = Column(Text, default="")
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} action={self.action}>"
 
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    type = Column(String(10), nullable=False)  # 'dm' or 'group'
+    type = Column(String(10), nullable=False)  # 'dm', 'group', or 'community'
     name = Column(String(255), nullable=True)  # for groups
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
 
+    organization = relationship("Organization", back_populates="conversations")
     creator = relationship("User", foreign_keys=[created_by])
     members = relationship("User", secondary="conversation_members", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan", order_by="Message.timestamp")
@@ -218,21 +232,3 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """Create all tables that do not already exist."""
     Base.metadata.create_all(bind=engine)
-
-    # Ensure a global community conversation exists
-    db = SessionLocal()
-    try:
-        community = db.query(Conversation).filter_by(type="community").first()
-        if not community:
-            # We use a fixed ID 9999 for the global community chat to make it easy to link/reference
-            community = Conversation(
-                id=9999,
-                type="community",
-                name="Community Chat",
-            )
-            db.add(community)
-            db.commit()
-    except Exception:
-        db.rollback()
-    finally:
-        db.close()

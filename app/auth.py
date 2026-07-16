@@ -129,6 +129,13 @@ def log_action(
     details: str = "",
 ) -> None:
     """Persist an audit-log entry."""
+    org_id = None
+    if user_id:
+        from app.models import User
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            org_id = user.organization_id
+
     entry = AuditLog(
         user_id=user_id,
         user_email=user_email,
@@ -136,6 +143,7 @@ def log_action(
         resource_type=resource_type,
         resource_id=resource_id,
         details=details,
+        organization_id=org_id,
     )
     db.add(entry)
     db.commit()

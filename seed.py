@@ -14,7 +14,7 @@ if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
 try:
-    from app.models import engine, Base, SessionLocal, User, Project, ProjectRole, Document, AuditLog
+    from app.models import engine, Base, SessionLocal, User, Project, ProjectRole, Document, AuditLog, Organization
     from app.auth import hash_password
 except ImportError as e:
     print(f"[Import Error] {e}")
@@ -37,6 +37,13 @@ def seed():
     session = SessionLocal()
 
     try:
+        # Ensure a default organization exists
+        demo_org = session.query(Organization).filter_by(name="CollabHub Demo").first()
+        if not demo_org:
+            demo_org = Organization(name="CollabHub Demo")
+            session.add(demo_org)
+            session.flush()
+
         # ------------------------------------------------------------------
         # 1. CREATE USERS
         # ------------------------------------------------------------------
@@ -63,36 +70,42 @@ def seed():
                 email="ceo@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="admin",
+                organization_id=demo_org.id,
             )
             manager = User(
                 name="Jordan Miller (Manager)",
                 email="manager@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="manager",
+                organization_id=demo_org.id,
             )
             srdev = User(
                 name="Taylor Vance (Sr Dev)",
                 email="srdev@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="senior_developer",
+                organization_id=demo_org.id,
             )
             jrdev = User(
                 name="Morgan Lee (Jr Dev)",
                 email="jrdev@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="junior_developer",
+                organization_id=demo_org.id,
             )
             member = User(
                 name="Sam Wilson (Employee)",
                 email="employee@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="member",
+                organization_id=demo_org.id,
             )
             guest = User(
                 name="Hacker User (Guest)",
                 email="guest@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="guest",
+                organization_id=demo_org.id,
             )
 
             session.add_all([admin, manager, srdev, jrdev, member, guest])
@@ -114,6 +127,7 @@ def seed():
                     resource_type="user",
                     resource_id=u.id,
                     details=f"Seeded demo user: {u.name} ({u.role})",
+                    organization_id=demo_org.id,
                 ))
 
         print()
@@ -139,6 +153,7 @@ def seed():
                 ),
                 status="active",
                 created_by=manager.id,
+                organization_id=demo_org.id,
             )
             project2 = Project(
                 name="Internal Documentation",
@@ -147,6 +162,7 @@ def seed():
                 ),
                 status="active",
                 created_by=admin.id,
+                organization_id=demo_org.id,
             )
 
             session.add_all([project1, project2])
@@ -163,6 +179,7 @@ def seed():
                 resource_type="project",
                 resource_id=project1.id,
                 details=f"Seeded project: {project1.name}",
+                organization_id=demo_org.id,
             ))
             session.add(AuditLog(
                 user_id=admin.id,
@@ -171,6 +188,7 @@ def seed():
                 resource_type="project",
                 resource_id=project2.id,
                 details=f"Seeded project: {project2.name}",
+                organization_id=demo_org.id,
             ))
 
         print()
@@ -181,8 +199,6 @@ def seed():
         print("[*] Assigning project roles...")
 
         roles_added = 0
-        # Project 1 (Product Launch Q3) allows: admin, manager, senior_developer, junior_developer
-        # Project 2 (Internal Documentation) allows: admin, manager, senior_developer, junior_developer, member, guest (full public access)
         project_roles_map = {
             project1.id: ["admin", "manager", "senior_developer", "junior_developer"],
             project2.id: ["admin", "manager", "senior_developer", "junior_developer", "member", "guest"]
@@ -218,28 +234,19 @@ def seed():
             "========================================\n\n"
             "1. LAUNCH TIMELINE\n"
             "Our flagship product launch is targeted for September 15th. The alpha build "
-            "will be feature-complete by July 31st, followed by a closed beta program "
-            "running August 1-31 with 200 selected enterprise customers. Bug fixes and "
-            "performance optimization will be prioritized during the beta period, with a "
-            "release candidate expected by September 5th.\n\n"
+            "will be finalized by August 1st, followed by external beta testing from "
+            "August 15th to August 30th. Full launch and release to production will "
+            "take place on September 15th.\n\n"
             "2. MARKETING STRATEGY\n"
-            "The marketing campaign will roll out in three phases. Phase 1 (August 1-15) "
-            "focuses on teaser content and influencer outreach. Phase 2 (August 16-31) "
-            "includes a press embargo lift, product demo videos, and landing page launch. "
-            "Phase 3 (September 1-15) is the full media blitz with paid advertising, "
-            "webinars, and the launch-day live event streamed on all major platforms.\n\n"
+            "Marketing will initiate product teasers on August 1st. Press releases "
+            "are scheduled for launch day. We will target key industry publications "
+            "and run email marketing campaigns focusing on the new security features "
+            "and performance enhancements.\n\n"
             "3. ENGINEERING MILESTONES\n"
-            "Key engineering deliverables include: API v2 stabilization (July 20), "
-            "performance benchmarks meeting SLA targets of <200ms p99 latency (August 10), "
-            "security audit completion (August 20), and load testing at 10x expected "
-            "traffic (August 25). The engineering team will operate in weekly sprint cycles "
-            "with daily standups during the final month.\n\n"
-            "4. CROSS-TEAM COORDINATION\n"
-            "Weekly sync meetings between Engineering, Marketing, Sales, and Customer "
-            "Success will begin July 15th. Each team has designated launch liaisons "
-            "responsible for status updates. A shared Kanban board tracks cross-functional "
-            "dependencies. Escalation paths are defined for blockers affecting the launch "
-            "timeline, with the VP of Product as the final decision-maker."
+            "- July 15: Feature freeze on main branch.\n"
+            "- July 30: Vulnerability scan and penetration testing completed.\n"
+            "- August 15: Beta release deployment to staging.\n"
+            "- September 10: Release candidate verification and gold master tag."
         )
         product_launch_bytes = product_launch_text.encode("utf-8")
 
@@ -258,10 +265,9 @@ def seed():
                 file_size=len(product_launch_bytes),
                 uploaded_by=manager.id,
                 summary=(
-                    "This document outlines the Product Launch Q3 plan, covering the "
-                    "marketing campaign timeline, engineering milestone deadlines, and "
-                    "cross-team coordination requirements. Key deliverables include the "
-                    "beta release in August and the full launch event in September."
+                    "This document outlines the Product Launch Q3 plan, covering the marketing campaign "
+                    "timeline, engineering milestone deadlines, and cross-team coordination requirements. "
+                    "Key deliverables include the beta release in August and the full launch event in September."
                 ),
             )
             session.add(doc1)
@@ -274,28 +280,26 @@ def seed():
                 resource_type="document",
                 resource_id=doc1.id,
                 details=f"Seeded document: product_launch_plan.txt ({len(product_launch_bytes)} bytes)",
+                organization_id=demo_org.id,
             ))
             print(f"   [+] Document - product_launch_plan.txt ({len(product_launch_bytes):,} bytes)")
 
         # Document 2 - Onboarding Guide
         onboarding_text = (
-            "New Employee Onboarding Guide\n"
-            "==============================\n\n"
-            "Welcome to the team! This guide will help you get up to speed quickly and "
-            "feel at home in our organization. Please complete each section during your "
-            "first week.\n\n"
-            "1. COMPANY CULTURE & VALUES\n"
-            "We operate on four core values: Transparency, Ownership, Collaboration, and "
-            "Continuous Learning. Every team member is encouraged to share ideas openly, "
-            "take initiative on problems they discover, and support colleagues across "
-            "departments. Our culture is flat and feedback-driven - we hold bi-weekly "
-            "retrospectives and quarterly all-hands meetings where anyone can raise topics.\n\n"
-            "2. TOOLS & SYSTEMS ACCESS\n"
-            "On your first day, IT will provision accounts for the following systems: "
-            "company email (Google Workspace), project management (CollabHub), version "
-            "control (GitHub), communication (Slack), and HR portal (BambooHR). Your "
-            "manager will grant access to team-specific tools and shared drives. If you "
-            "encounter access issues, submit a ticket via the IT Help Desk channel.\n\n"
+            "CollabHub Onboarding & Employee Guide\n"
+            "=======================================\n\n"
+            "1. WELCOME TO COLLABHUB\n"
+            "We are thrilled to have you join our team! CollabHub is dedicated to building "
+            "world-class collaboration software with state-of-the-art access management. "
+            "This guide is designed to help you navigate your first week and get your "
+            "development environment set up.\n\n"
+            "2. SECURITY & ACCESS COMPLIANCE\n"
+            "As an enterprise collaboration platform, security is our top priority. You must "
+            "adhere to the following guidelines:\n"
+            "- Never hardcode API keys or secrets in source code.\n"
+            "- Follow the principle of least privilege: only request access to projects and "
+            "documents you strictly need for your active workstreams.\n"
+            "- Report any suspicious audit log activity immediately to security@demo.com.\n\n"
             "3. FIRST-WEEK CHECKLIST\n"
             "Day 1: Complete HR paperwork, set up workstation, meet your buddy.\n"
             "Day 2: Attend orientation session, review company handbook.\n"
@@ -342,6 +346,7 @@ def seed():
                 resource_type="document",
                 resource_id=doc2.id,
                 details=f"Seeded document: onboarding_guide.txt ({len(onboarding_bytes)} bytes)",
+                organization_id=demo_org.id,
             ))
             print(f"   [+] Document - onboarding_guide.txt   ({len(onboarding_bytes):,} bytes)")
 
