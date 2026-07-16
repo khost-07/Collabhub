@@ -69,6 +69,13 @@
           AI Search
         </a>
 
+        <a href="/chat" class="sidebar-link {% if '/chat' in request.url.path %}active{% endif %}" id="nav-chat">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Chat
+        </a>
+
         {% if user.role == 'admin' %}
         <a href="/users" class="sidebar-link {% if '/users' in request.url.path %}active{% endif %}" id="nav-users">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

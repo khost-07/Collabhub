@@ -56,6 +56,8 @@ class User(Base):
     role = Column(String(20), default="member", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+    conversations = relationship("Conversation", secondary="conversation_members", back_populates="members")
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
 
@@ -147,6 +149,54 @@ class AuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} action={self.action}>"
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    type = Column(String(10), nullable=False)  # 'dm' or 'group'
+    name = Column(String(255), nullable=True)  # for groups
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    creator = relationship("User", foreign_keys=[created_by])
+    members = relationship("User", secondary="conversation_members", back_populates="conversations")
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan", order_by="Message.timestamp")
+
+
+class ConversationMember(Base):
+    __tablename__ = "conversation_members"
+
+    conversation_id = Column(
+        Integer,
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(
+        Integer,
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    conversation = relationship("Conversation", back_populates="messages")
+    sender = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<Message id={self.id} sender_id={self.sender_id}>"
 
 
 # ---------------------------------------------------------------------------

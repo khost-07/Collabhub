@@ -9,7 +9,7 @@ from starlette.responses import Response as StarletteResponse
 
 from app.models import init_db
 from app.auth import RequiresLoginException, NotAuthorizedException, NotFoundException
-from app.routes import users, projects, documents, ai
+from app.routes import users, projects, documents, ai, chat
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(documents.router)
 app.include_router(ai.router)
+app.include_router(chat.router)
 
 
 # ---------------------------------------------------------------------------
