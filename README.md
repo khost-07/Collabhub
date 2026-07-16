@@ -171,12 +171,6 @@ collabhub/
 └── README.md
 ```
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
 <p align="center">
   Built with ❤️ using <a href="https://fastapi.tiangolo.com/">FastAPI</a> &amp; <a href="https://ai.google.dev/">Google Gemini</a>
 </p>
