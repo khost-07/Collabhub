@@ -461,3 +461,28 @@ async def onboarding_add_employee(request: Request, db: Session = Depends(get_db
         status_code=303,
     )
 
+
+@router.post("/onboarding/save-api-key")
+async def onboarding_save_api_key(request: Request, db: Session = Depends(get_db)):
+    user = require_admin(request, db)
+    form = await request.form()
+    api_key = form.get("gemini_api_key", "").strip()
+
+    user.gemini_api_key = api_key if api_key else None
+    db.commit()
+
+    log_action(
+        db,
+        user.id,
+        user.email,
+        "onboarding_save_api_key",
+        resource_type="user",
+        resource_id=user.id,
+        details="CEO updated Gemini API key during onboarding",
+    )
+
+    return RedirectResponse(
+        url="/onboarding?message=Gemini+API+Key+saved+successfully&type=success",
+        status_code=303,
+    )
+

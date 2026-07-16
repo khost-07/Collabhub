@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}Organization Onboarding - CollabHub{% endblock %}
 
-{% block auth_content %}
-<div class="auth-card" style="max-width: 600px; padding: 40px">
-  <div class="auth-logo" style="margin-bottom: 24px">
-    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto; padding: 40px 20px">
+  <div class="auth-logo" style="margin-bottom: 24px; text-align: center; font-size: 1.8rem; font-weight: 700">
+    <svg class="brand-icon" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
       <circle cx="5" cy="6" r="2"/>
       <circle cx="19" cy="6" r="2"/>
@@ -21,24 +21,45 @@
   <h2 style="text-align:center;margin-bottom:8px">Organization Onboarding</h2>
   <p style="text-align:center;color:var(--text-secondary);margin-bottom:32px">Set up your workspace and register your employees</p>
 
-  {% if request.query_params.get('message') %}
-  <div class="alert alert-{{ request.query_params.get('type', 'info') }}" style="margin-bottom: 24px">
-    <span>{{ request.query_params.get('message') }}</span>
+  {% set msg = request.query_params.get('message') %}
+  {% set msg_type = request.query_params.get('type', 'info') %}
+  {% if msg %}
+  <div class="alert alert-{{ msg_type }}" style="margin-bottom: 24px">
+    <span>{{ msg }}</span>
   </div>
   {% endif %}
 
-  <!-- Step 1: Creator CEO Info -->
+  <!-- Welcome Box -->
   <div class="card" style="margin-bottom: 24px; border-color: var(--primary)">
     <h3 style="font-size: 1.05rem; margin-bottom: 8px; display:flex; align-items:center; gap:8px">
       <span class="badge badge-admin" style="padding: 2px 8px; font-size:0.6875rem">CEO</span>
       {{ user.name }}
     </h3>
     <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:0">
-      You are registered as the CEO of this organization. Next, add your team members below to grant them workspace access.
+      You are registered as the CEO of this organization. Next, save your organization API key and add your team members to grant them workspace access.
     </p>
   </div>
 
-  <!-- Step 2: Add Employee Form -->
+  <!-- Configure API Key Form -->
+  <div class="card" style="margin-bottom: 24px">
+    <h3 style="margin-bottom: 12px; font-size: 1.1rem">Configure Google Gemini API Key</h3>
+    <p style="font-size:0.8125rem; color:var(--text-secondary); margin-bottom:16px">
+      Provide your Google Gemini API Key to enable AI-powered features (document summaries, semantic searches, and chat caught-up summaries).
+    </p>
+    <form method="POST" action="/onboarding/save-api-key" id="apiKeyForm">
+      <div class="form-group" style="margin-bottom: 16px">
+        <label class="form-label" for="gemini_api_key">Gemini API Key</label>
+        <input class="form-input" type="password" id="gemini_api_key" name="gemini_api_key" 
+               placeholder="{% if user.gemini_api_key %}•••••••••••••••• (Saved){% else %}AI Studio API Key (AI-powered features require this){% endif %}" 
+               value="{% if user.gemini_api_key %}{{ user.gemini_api_key }}{% endif %}">
+      </div>
+      <button type="submit" class="btn btn-secondary" style="width:100%; justify-content:center">
+        Save API Key
+      </button>
+    </form>
+  </div>
+
+  <!-- Add Employee Form -->
   <div class="card" style="margin-bottom: 24px">
     <h3 style="margin-bottom: 16px; font-size: 1.1rem">Add Team Member</h3>
     <form method="POST" action="/onboarding/add-employee" id="onboardingAddForm">
@@ -80,7 +101,7 @@
     </form>
   </div>
 
-  <!-- Step 3: Current Added List -->
+  <!-- Current Added List -->
   {% if employees and employees|length > 0 %}
   <div class="card" style="margin-bottom: 32px">
     <h3 style="margin-bottom: 12px; font-size: 1.05rem">Registered Employees</h3>
@@ -98,8 +119,8 @@
   </div>
   {% endif %}
 
-  <!-- Step 4: Finish -->
-  <a href="/dashboard" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 20px; font-size: 1rem; font-weight: 600">
+  <!-- Finish -->
+  <a href="/dashboard" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 20px; font-size: 1rem; font-weight: 600; text-decoration: none">
     Finish Onboarding & Go to Dashboard
     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="9 18 15 12 9 6"/>

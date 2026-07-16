@@ -14,7 +14,7 @@ from app.auth import (
     NotFoundException,
     log_action,
 )
-from app.routes.ai import extract_text, summarize_document
+from app.routes.ai import extract_text, summarize_document, get_gemini_api_key
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -105,7 +105,8 @@ async def upload_document(
     # --- Extract text and summarize ---
     file_type = extension  # 'pdf' or 'txt'
     extracted_text = extract_text(file_content, file_type)
-    summary = summarize_document(extracted_text) if extracted_text else ""
+    api_key = get_gemini_api_key(db)
+    summary = summarize_document(extracted_text, api_key) if extracted_text else ""
 
     # --- Persist document ---
     document = Document(

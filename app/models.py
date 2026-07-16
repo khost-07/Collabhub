@@ -54,6 +54,7 @@ class User(Base):
     name = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(20), default="member", nullable=False)
+    gemini_api_key = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     conversations = relationship("Conversation", secondary="conversation_members", back_populates="members")
@@ -77,6 +78,7 @@ class Project(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+    files_summary = Column(Text, default="", nullable=False)
 
     creator = relationship("User", foreign_keys=[created_by])
     allowed_roles = relationship(

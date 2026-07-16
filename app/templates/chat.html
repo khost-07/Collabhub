@@ -398,6 +398,12 @@
           {% endif %}
         </div>
       </div>
+      <button class="btn btn-secondary btn-sm" id="btnCatchUp" style="display:inline-flex; align-items:center; gap:6px">
+        <svg class="icon" style="width:16px; height:16px; color:var(--warning)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        Catch Me Up
+      </button>
     </div>
 
     <div class="chat-messages" id="messagesContainer">
@@ -484,6 +490,30 @@
   </div>
 </div>
 
+<!-- Modal: Chat Catch-Up -->
+<div class="modal" id="modalCatchUp">
+  <div class="modal-content" style="width: 500px">
+    <div class="modal-header">
+      <span class="modal-title" style="display:flex; align-items:center; gap:8px">
+        <svg class="icon" style="color:var(--warning)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        Recent Chat Summary
+      </span>
+      <button class="modal-close" id="btnCloseCatchUp">&times;</button>
+    </div>
+    <div id="catchUpLoading" style="text-align:center; padding: 20px; color:var(--text-secondary)">
+      <p>Analyzing conversation history...</p>
+    </div>
+    <div id="catchUpContent" style="display:none; font-size:0.9375rem; line-height:1.6; color:var(--text); white-space:pre-wrap; max-height: 300px; overflow-y: auto; padding-right:4px">
+      <!-- Render summary bullets -->
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin-top:20px">
+      <button type="button" class="btn btn-primary btn-sm" id="btnDismissCatchUp">Got it</button>
+    </div>
+  </div>
+</div>
+
 {% if active_conversation %}
 <script>
   document.addEventListener("DOMContentLoaded", () => {
@@ -492,6 +522,51 @@
     const messagesContainer = document.getElementById("messagesContainer");
     const chatForm = document.getElementById("chatForm");
     const messageInput = document.getElementById("messageInput");
+
+    // Catch-Up trigger logic
+    const btnCatchUp = document.getElementById("btnCatchUp");
+    const modalCatchUp = document.getElementById("modalCatchUp");
+    const btnCloseCatchUp = document.getElementById("btnCloseCatchUp");
+    const btnDismissCatchUp = document.getElementById("btnDismissCatchUp");
+    const catchUpLoading = document.getElementById("catchUpLoading");
+    const catchUpContent = document.getElementById("catchUpContent");
+
+    if (btnCatchUp && modalCatchUp) {
+      const openCatchUp = () => {
+        modalCatchUp.style.display = "flex";
+        catchUpLoading.style.display = "block";
+        catchUpContent.style.display = "none";
+        catchUpContent.textContent = "";
+
+        fetch(`/chat/conversations/${conversationId}/catch-up`)
+          .then(res => {
+            if (!res.ok) throw new Error("Could not retrieve catch-up summary");
+            return res.json();
+          })
+          .then(data => {
+            catchUpLoading.style.display = "none";
+            catchUpContent.style.display = "block";
+            catchUpContent.textContent = data.summary || "No messages to summarize.";
+          })
+          .catch(err => {
+            catchUpLoading.style.display = "none";
+            catchUpContent.style.display = "block";
+            catchUpContent.innerHTML = `<span style="color:var(--danger)">Failed to generate summary: ${err.message}</span>`;
+          });
+      };
+
+      const closeCatchUp = () => {
+        modalCatchUp.style.display = "none";
+      };
+
+      btnCatchUp.addEventListener("click", openCatchUp);
+      if (btnCloseCatchUp) btnCloseCatchUp.addEventListener("click", closeCatchUp);
+      if (btnDismissCatchUp) btnDismissCatchUp.addEventListener("click", closeCatchUp);
+      
+      window.addEventListener("click", (e) => {
+        if (e.target === modalCatchUp) closeCatchUp();
+      });
+    }
 
     // Scroll to the bottom of the message container
     function scrollToBottom() {
