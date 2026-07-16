@@ -117,6 +117,19 @@ Demo credentials are seeded under the `"CollabHub Demo"` organization:
 | **Member**       | employee@demo.com   | `demo123` |
 | **Guest**        | guest@demo.com      | `demo123` |
 
+## Known Limitations & Assumptions
+
+- **SQLite** — Single-writer database; not suitable for high-concurrency production workloads. For production, consider migrating to PostgreSQL.
+- **File Storage** — Documents are stored as BLOBs in SQLite. This works well for files under 10 MB but is not ideal for large-scale document management.
+- **Render Free Tier** — Filesystem is ephemeral — the SQLite database and all data reset on each redeploy. The seed script ensures demo data is always available.
+- **PDF Extraction** — Text extraction quality depends on PDF structure. Scanned/image-based PDFs may yield poor or no text, resulting in less useful AI summaries.
+- **No Email Verification** — Signup does not require email confirmation.
+- **No Password Reset** — There is no forgot-password or password-reset flow.
+- **AI Dependency** — Summarization and search features require a valid Google Gemini API key and network connectivity to Google's API.
+- **Session Duration** — JWT tokens expire after 24 hours; users will need to log in again.
+
+> **Note**: On Render's free tier, the filesystem is ephemeral. The SQLite database (and all uploaded documents stored as BLOBs within it) will be reset on each redeploy. The seed script runs during build, so demo data will always be available. For persistent storage, use Render's paid tier with a Persistent Disk.
+
 ---
 
 ## Project Structure
