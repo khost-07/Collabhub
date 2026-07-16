@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}{{ error }} - CollabHub{% endblock %}
+
+{% block error_body %}
+<div class="error-page">
+  <svg style="width:80px;height:80px;color:var(--primary);margin-bottom:24px;opacity:0.3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+
+  <div class="error-code">{{ error }}</div>
+  <p class="error-message">{{ message }}</p>
+
+  <div class="error-actions">
+    <a href="/dashboard" class="btn btn-primary" id="errorDashboardBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      Go to Dashboard
+    </a>
+    <a href="/login" class="btn btn-secondary" id="errorLoginBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+      </svg>
+      Go to Login
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}{{ self.error_body() }}{% endblock %}
+{% block auth_content %}{{ self.error_body() }}{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}AI Search - CollabHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">AI-Powered Search</h1>
+    <p class="page-subtitle">Search across all documents using natural language</p>
+  </div>
+</div>
+
+<!-- Search Form -->
+<form method="POST" action="/search" id="searchForm">
+  <div class="search-bar">
+    <input type="text" name="query" class="search-input" id="searchQuery" value="{{ query if query else '' }}" placeholder="Search documents using natural language..." autocomplete="off">
+    <button type="submit" class="btn btn-primary" id="searchBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Search
+    </button>
+  </div>
+</form>
+
+<!-- Results -->
+{% if query %}
+  {% if results and results|length > 0 %}
+  <div style="margin-bottom:16px">
+    <p style="color:var(--text-secondary);font-size:0.875rem">
+      Found <strong style="color:var(--text)">{{ results|length }}</strong> result{{ 's' if results|length != 1 else '' }} for "<strong style="color:var(--text)">{{ query }}</strong>"
+    </p>
+  </div>
+
+  {% for result in results %}
+  <div class="result-card" id="result-{{ loop.index }}">
+    <h3>
+      <a href="/documents/{{ result.document.id }}/download">
+        <svg class="icon" style="display:inline;vertical-align:middle;margin-right:6px;width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        {{ result.document.filename }}
+      </a>
+    </h3>
+    <div class="result-meta">
+      <svg class="icon" style="display:inline;vertical-align:middle;margin-right:4px;width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+      Project: <strong>{{ result.project_name }}</strong>
+    </div>
+    {% if result.document.summary %}
+    <p class="result-summary">{{ result.document.summary }}</p>
+    {% endif %}
+    {% if result.reason %}
+    <div class="result-reason">
+      <svg class="icon" style="display:inline;vertical-align:middle;margin-right:4px;width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      {{ result.reason }}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="card">
+    <div class="empty-state">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+      <h3>No matching documents found</h3>
+      <p>No results found for "<strong>{{ query }}</strong>". Try rephrasing your search query.</p>
+    </div>
+  </div>
+  {% endif %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <h3>Search your documents</h3>
+    <p>Enter a natural-language query to search across all your documents using AI.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

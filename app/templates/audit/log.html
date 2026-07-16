@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Audit Log - CollabHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Audit Log</h1>
+    <p class="page-subtitle">Track all system activity and user actions</p>
+  </div>
+</div>
+
+<div class="card">
+  {% if logs and logs|length > 0 %}
+  <div class="table-container">
+    <table id="auditTable">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Resource</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="white-space:nowrap">
+            <svg class="icon" style="display:inline;vertical-align:middle;margin-right:4px;width:14px;height:14px;color:var(--text-muted)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {{ log.timestamp.strftime('%b %d, %Y %H:%M') }}
+          </td>
+          <td>{{ log.user_email }}</td>
+          <td><span class="badge badge-active">{{ log.action }}</span></td>
+          <td>{{ log.resource_type }}</td>
+          <td style="max-width:300px;font-size:0.8125rem">{{ log.details }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+    </svg>
+    <h3>No audit entries</h3>
+    <p>System activity will be logged here as actions are performed.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

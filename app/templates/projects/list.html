@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Projects - CollabHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Projects</h1>
+    <p class="page-subtitle">Manage and collaborate on team projects</p>
+  </div>
+  <div class="page-actions">
+    {% if user.role in ('admin', 'manager') %}
+    <a href="/projects/new" class="btn btn-primary" id="newProjectBtn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      New Project
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if projects and projects|length > 0 %}
+<div class="project-grid">
+  {% for project in projects %}
+  <div class="project-card" id="project-{{ project.id }}">
+    <h3>
+      <a href="/projects/{{ project.id }}">
+        <svg class="icon" style="display:inline;vertical-align:middle;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        {{ project.name }}
+      </a>
+    </h3>
+    <p class="project-card-desc">{{ project.description[:120] }}{% if project.description|length > 120 %}...{% endif %}</p>
+    <div class="project-card-footer">
+      <span class="badge badge-{{ project.status }}">{{ project.status|capitalize }}</span>
+      <span>
+        Created by {{ project.creator.name }} &middot; {{ project.created_at.strftime('%b %d, %Y') }}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+    <h3>No projects yet</h3>
+    <p>Create your first project to start collaborating with your team.</p>
+    {% if user.role in ('admin', 'manager') %}
+    <a href="/projects/new" class="btn btn-primary" style="margin-top:16px">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Create Project
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

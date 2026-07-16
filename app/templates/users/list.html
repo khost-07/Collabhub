@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}User Management - CollabHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">User Management</h1>
+    <p class="page-subtitle">Manage team members and their roles</p>
+  </div>
+</div>
+
+<div class="card">
+  {% if users and users|length > 0 %}
+  <div class="table-container">
+    <table id="usersTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr id="user-{{ u.id }}">
+          <td style="color:var(--text);font-weight:500">
+            <div style="display:flex;align-items:center;gap:10px">
+              <svg class="icon" style="color:var(--text-muted);width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              {{ u.name }}
+            </div>
+          </td>
+          <td>{{ u.email }}</td>
+          <td><span class="badge badge-{{ u.role }}">{{ u.role|capitalize }}</span></td>
+          <td>{{ u.created_at.strftime('%b %d, %Y') }}</td>
+          <td>
+            {% if u.id == user.id %}
+              <span style="color:var(--text-muted);font-size:0.8125rem;font-style:italic">Current user</span>
+            {% else %}
+            <form method="POST" action="/users/{{ u.id }}/role" class="inline-form" id="roleForm{{ u.id }}">
+              <select class="form-select" name="role" id="roleSelect{{ u.id }}">
+                <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="manager" {% if u.role == 'manager' %}selected{% endif %}>Manager</option>
+                <option value="member" {% if u.role == 'member' %}selected{% endif %}>Member</option>
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm" id="roleUpdate{{ u.id }}Btn">Update</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    <h3>No users found</h3>
+    <p>Users will appear here once they sign up.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
