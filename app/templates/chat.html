@@ -539,14 +539,15 @@
         catchUpContent.textContent = "";
 
         fetch(`/chat/conversations/${conversationId}/catch-up`)
-          .then(res => {
-            if (!res.ok) throw new Error("Could not retrieve catch-up summary");
-            return res.json();
-          })
+          .then(res => res.json())
           .then(data => {
             catchUpLoading.style.display = "none";
             catchUpContent.style.display = "block";
-            catchUpContent.textContent = data.summary || "No messages to summarize.";
+            if (data.error) {
+              catchUpContent.innerHTML = `<span style="color:var(--danger)">${data.error}</span>`;
+            } else {
+              catchUpContent.textContent = data.summary || "No messages to summarize.";
+            }
           })
           .catch(err => {
             catchUpLoading.style.display = "none";

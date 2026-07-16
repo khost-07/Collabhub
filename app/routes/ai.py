@@ -338,8 +338,7 @@ def chat_catch_up(conversation_id: int, request: Request, db: Session = Depends(
     api_key = get_gemini_api_key(db)
     if not api_key:
         return JSONResponse(
-            content={"summary": "AI Catch-Up failed: Gemini API key is not configured."},
-            status_code=400
+            content={"error": "Gemini API key is not configured. Please add your key in Onboarding."}
         )
 
     try:
@@ -359,6 +358,5 @@ def chat_catch_up(conversation_id: int, request: Request, db: Session = Depends(
     except Exception as exc:
         logger.error("Chat catch up failed: %s", exc)
         return JSONResponse(
-            content={"summary": f"AI Catch-Up failed: {exc}"},
-            status_code=500
+            content={"error": f"AI Catch-Up failed: {exc}"}
         )
