@@ -28,6 +28,9 @@
   {% endif %}
 
   <form method="POST" action="/login" id="loginForm">
+    {% if onboard %}
+    <input type="hidden" name="onboard" value="true">
+    {% endif %}
     <div class="form-group">
       <label class="form-label" for="email">Email</label>
       <input class="form-input" type="email" id="email" name="email" required placeholder="you@company.com" autocomplete="email">

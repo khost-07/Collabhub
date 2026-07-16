@@ -32,12 +32,14 @@ def login_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/dashboard", status_code=303)
     message = request.query_params.get("message", "")
     message_type = request.query_params.get("type", "info")
+    onboard = request.query_params.get("onboard", "")
     return templates.TemplateResponse(
         "login.html",
         {
             "request": request,
             "message": message,
             "message_type": message_type,
+            "onboard": onboard,
         },
     )
 
@@ -70,7 +72,11 @@ async def login_post(request: Request, db: Session = Depends(get_db)):
         )
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
-    response = RedirectResponse(url="/dashboard", status_code=303)
+    onboard = form.get("onboard", "") == "true"
+    if onboard and user.role == "admin":
+        response = RedirectResponse(url="/onboarding", status_code=303)
+    else:
+        response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(
         key="access_token",
         value=token,
@@ -156,12 +162,12 @@ async def signup_post(request: Request, db: Session = Depends(get_db)):
             },
         )
 
-    # CRITICAL: always set role to 'member' — ignore any client input
+    is_ceo = form.get("is_ceo") == "true"
     new_user = User(
         name=name,
         email=email,
         hashed_password=hash_password(password),
-        role="guest",
+        role="admin" if is_ceo else "guest",
     )
     db.add(new_user)
     db.commit()
@@ -176,10 +182,16 @@ async def signup_post(request: Request, db: Session = Depends(get_db)):
         resource_id=new_user.id,
     )
 
-    return RedirectResponse(
-        url="/login?message=Account+created+successfully&type=success",
-        status_code=303,
-    )
+    if is_ceo:
+        return RedirectResponse(
+            url="/login?message=CEO+Account+created.+Please+log+in+to+complete+onboarding&type=success&onboard=true",
+            status_code=303,
+        )
+    else:
+        return RedirectResponse(
+            url="/login?message=Account+created+successfully&type=success",
+            status_code=303,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -358,5 +370,94 @@ def list_audit_logs(request: Request, db: Session = Depends(get_db)):
             "user": user,
             "logs": logs,
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Organization Onboarding (CEO only)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/onboarding")
+def onboarding_page(request: Request, db: Session = Depends(get_db)):
+    user = require_admin(request, db) # CEO is admin
+    message = request.query_params.get("message", "")
+    message_type = request.query_params.get("type", "info")
+
+    # Fetch all employees added so far (all users except this CEO)
+    employees = db.query(User).filter(User.id != user.id).order_by(User.created_at.desc()).all()
+
+    return templates.TemplateResponse(
+        "onboarding.html",
+        {
+            "request": request,
+            "user": user,
+            "employees": employees,
+            "message": message,
+            "message_type": message_type,
+        },
+    )
+
+
+@router.post("/onboarding/add-employee")
+async def onboarding_add_employee(request: Request, db: Session = Depends(get_db)):
+    user = require_admin(request, db)
+    form = await request.form()
+
+    name = form.get("name", "").strip()
+    email = form.get("email", "").strip().lower()
+    role = form.get("role", "").strip()
+    password = form.get("password", "")
+
+    if not name or not email or not role or not password:
+        return RedirectResponse(
+            url="/onboarding?message=All+fields+are+required&type=error",
+            status_code=303,
+        )
+
+    if len(password) < 6:
+        return RedirectResponse(
+            url="/onboarding?message=Password+must+be+at+least+6+characters&type=error",
+            status_code=303,
+        )
+
+    if role not in ("manager", "senior_developer", "junior_developer", "member", "guest"):
+        return RedirectResponse(
+            url="/onboarding?message=Invalid+role+selected&type=error",
+            status_code=303,
+        )
+
+    # Check email uniqueness
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        return RedirectResponse(
+            url="/onboarding?message=An+account+with+this+email+already+exists&type=error",
+            status_code=303,
+        )
+
+    # Create employee user
+    new_employee = User(
+        name=name,
+        email=email,
+        hashed_password=hash_password(password),
+        role=role,
+    )
+    db.add(new_employee)
+    db.commit()
+    db.refresh(new_employee)
+
+    log_action(
+        db,
+        user.id,
+        user.email,
+        "onboarding_add_employee",
+        resource_type="user",
+        resource_id=new_employee.id,
+        details=f"CEO created employee {new_employee.name} ({new_employee.role}) during onboarding",
+    )
+
+    return RedirectResponse(
+        url=f"/onboarding?message=Employee+{new_employee.name}+added+successfully&type=success",
+        status_code=303,
     )
 

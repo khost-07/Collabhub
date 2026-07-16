@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Organization Onboarding - CollabHub{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card" style="max-width: 600px; padding: 40px">
+  <div class="auth-logo" style="margin-bottom: 24px">
+    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <circle cx="5" cy="6" r="2"/>
+      <circle cx="19" cy="6" r="2"/>
+      <circle cx="5" cy="18" r="2"/>
+      <circle cx="19" cy="18" r="2"/>
+      <line x1="9.5" y1="10.5" x2="6.5" y2="7.5"/>
+      <line x1="14.5" y1="10.5" x2="17.5" y2="7.5"/>
+      <line x1="9.5" y1="13.5" x2="6.5" y2="16.5"/>
+      <line x1="14.5" y1="13.5" x2="17.5" y2="16.5"/>
+    </svg>
+    CollabHub
+  </div>
+
+  <h2 style="text-align:center;margin-bottom:8px">Organization Onboarding</h2>
+  <p style="text-align:center;color:var(--text-secondary);margin-bottom:32px">Set up your workspace and register your employees</p>
+
+  {% if request.query_params.get('message') %}
+  <div class="alert alert-{{ request.query_params.get('type', 'info') }}" style="margin-bottom: 24px">
+    <span>{{ request.query_params.get('message') }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Step 1: Creator CEO Info -->
+  <div class="card" style="margin-bottom: 24px; border-color: var(--primary)">
+    <h3 style="font-size: 1.05rem; margin-bottom: 8px; display:flex; align-items:center; gap:8px">
+      <span class="badge badge-admin" style="padding: 2px 8px; font-size:0.6875rem">CEO</span>
+      {{ user.name }}
+    </h3>
+    <p style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:0">
+      You are registered as the CEO of this organization. Next, add your team members below to grant them workspace access.
+    </p>
+  </div>
+
+  <!-- Step 2: Add Employee Form -->
+  <div class="card" style="margin-bottom: 24px">
+    <h3 style="margin-bottom: 16px; font-size: 1.1rem">Add Team Member</h3>
+    <form method="POST" action="/onboarding/add-employee" id="onboardingAddForm">
+      <div class="form-group">
+        <label class="form-label" for="emp_name">Full Name</label>
+        <input class="form-input" type="text" id="emp_name" name="name" required placeholder="Alice Smith">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="emp_email">Email Address</label>
+        <input class="form-input" type="email" id="emp_email" name="email" required placeholder="alice@company.com">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+        <div class="form-group">
+          <label class="form-label" for="emp_role">Role</label>
+          <select class="form-select" id="emp_role" name="role" required>
+            <option value="manager">Manager</option>
+            <option value="senior_developer">Senior Developer</option>
+            <option value="junior_developer">Junior Developer</option>
+            <option value="member">Member</option>
+            <option value="guest">Guest</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="emp_password">Temp Password</label>
+          <input class="form-input" type="password" id="emp_password" name="password" required placeholder="••••••••" minlength="6">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btnAddEmployee" style="width:100%; justify-content:center; margin-top:8px">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add Employee
+      </button>
+    </form>
+  </div>
+
+  <!-- Step 3: Current Added List -->
+  {% if employees and employees|length > 0 %}
+  <div class="card" style="margin-bottom: 32px">
+    <h3 style="margin-bottom: 12px; font-size: 1.05rem">Registered Employees</h3>
+    <div style="display:flex; flex-direction:column; gap:10px">
+      {% for emp in employees %}
+      <div style="display:flex; align-items:center; justify-content:space-between; padding: 10px 14px; background:var(--bg-body); border:1px solid var(--border); border-radius:8px">
+        <div>
+          <div style="font-weight: 500; font-size:0.875rem">{{ emp.name }}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted)">{{ emp.email }}</div>
+        </div>
+        <span class="badge badge-{{ emp.role }}">{{ emp.role|replace('_', ' ')|title }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Step 4: Finish -->
+  <a href="/dashboard" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 20px; font-size: 1rem; font-weight: 600">
+    Finish Onboarding & Go to Dashboard
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </a>
+</div>
+{% endblock %}
