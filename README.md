@@ -4,39 +4,71 @@
     <strong>Enterprise Collaboration & Hierarchical Access Management Platform</strong>
   </p>
   <p align="center">
+    <a href="https://collabhub-9cjl.onrender.com/"><strong>🚀 Live Deployment URL: https://collabhub-9cjl.onrender.com/</strong></a>
+  </p>
+  <p align="center">
     <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
     <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI"></a>
     <a href="https://www.sqlite.org/"><img src="https://img.shields.io/badge/SQLite-Database-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite"></a>
-    <a href="https://ai.google.dev/"><img src="https://img.shields.io/badge/Gemini-2.5--flash-4285F4?style=flat-square&logo=google&logoColor=white" alt="Gemini"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License"></a>
+    <a href="https://ai.google.dev/"><img src="https://img.shields.io/badge/Gemini-3.5--flash-4285F4?style=flat-square&logo=google&logoColor=white" alt="Gemini"></a>
   </p>
 </p>
 
 ---
 
-A full-stack enterprise collaboration platform with hierarchical role-based access control, AI-powered document intelligence, and comprehensive audit logging — built with FastAPI and server-rendered templates.
+CollabHub is a full-stack, multi-tenant enterprise collaboration platform. It offers hierarchical role-based access control, AI-powered document intelligence (cohesive project files summary, catch-up smart summary, semantic searches), real-time WebSockets messaging, and full audit logging. The entire system is built with FastAPI and server-rendered templates.
 
-## What This App Does
+## Live Deployment
 
-CollabHub is an enterprise collaboration platform with hierarchical role-based access control designed for teams that need structured project management and document workflows. It supports project management, document upload with AI-powered summarization via Google Gemini, team member assignment, and comprehensive audit logging. Three roles — **Admin**, **Manager**, and **Member** — enforce granular permissions across all features, ensuring that sensitive actions are restricted to authorized personnel.
+The application is deployed on Render and is accessible at:
+👉 **[https://collabhub-9cjl.onrender.com/](https://collabhub-9cjl.onrender.com/)**
+
+---
+
+## Latest Features & Updates
+
+### 1. Multi-Tenant Workspace Isolation
+- **Organization Registration**: Public signup registers a new `Organization` (by entering an Organization Name) and automatically marks the registrant as the organization's CEO (Admin).
+- **Data Isolation**: All projects, documents, logs, users, and conversations are strictly isolated by `organization_id` at the database and query boundary level. 
+- **Dynamic Community Chats**: Each organization gets a dynamically initialized community chat room on setup, preventing cross-organization communication.
+
+### 2. CEO Workspace Onboarding Setup
+- **Onboarding Flow**: Newly registered CEOs are redirected to a dedicated Workspace Setup onboarding flow. 
+- **Employee Provisioning**: CEOs can instantly add employees (managers, developers, members) to their organization, creating custom emails, roles, and temp passwords for them.
+- **Persistent Access**: A permanent **Workspace Setup** link is added to the sidebar for CEO users to update the Gemini API Key or add more employees at any time.
+
+### 3. Bring-Your-Own Gemini API Key (BYOK)
+- All AI features (summarizing single documents, unified project file summaries, semantic search, and chat catch-up) run using the custom Google Gemini API Key configured by the organization's CEO during onboarding.
+
+### 4. Real-Time Chat & WebSockets
+- **DMs & Group Chats**: Users can start isolated direct messages or group chats with coworkers within the same organization.
+- **WebSocket Broadcast**: Full WebSocket-backed real-time messaging with strict organization and membership verification during connection handshakes and message broadcasts.
+- **Chat Catch-Up**: Summarizes recent chat logs into 3-4 key bullet points using the configured Gemini model (`gemini-3.5-flash`).
+
+### 5. Indian Standard Time (IST) Clock
+- All database timestamps are saved in UTC but formatted and rendered in **Indian Standard Time (IST, GMT+5:30)** using a centralized Jinja2 templates filter.
+
+---
 
 ## Tech Stack
 
 | Layer              | Technology                                                         |
 | ------------------ | ------------------------------------------------------------------ |
-| **Backend**        | Python 3.10+, FastAPI                                              |
-| **Database**       | SQLite (single file, auto-created)                                 |
+| **Backend**        | Python 3.10+, FastAPI, Uvicorn, WebSockets                         |
+| **Database**       | SQLite (single file, auto-created via SQLAlchemy ORM)               |
 | **Frontend**       | Server-rendered HTML (Jinja2 templates), vanilla CSS, vanilla JavaScript |
 | **Authentication** | JWT tokens in HttpOnly cookies, bcrypt password hashing            |
-| **AI**             | Google Gemini (`gemini-2.5-flash`) via `google-genai` SDK          |
-| **File Storage**   | SQLite BLOB (files stored in the database, no external storage needed) |
+| **AI**             | Google Gemini (`gemini-3.5-flash`) via `google-genai` SDK          |
+| **File Storage**   | SQLite BLOB (stored in-database)                                   |
+
+---
 
 ## Setup Instructions
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/collabhub.git
-cd collabhub
+git clone https://github.com/khost-07/Collabhub.git
+cd Collabhub
 
 # 2. Create and activate a virtual environment
 python -m venv venv
@@ -48,9 +80,9 @@ pip install -r requirements.txt
 
 # 4. Configure environment variables
 cp .env.example .env
-# Edit .env and set your GEMINI_API_KEY and a random SECRET_KEY
+# Edit .env and set your custom configurations (SECRET_KEY, DATABASE_URL)
 
-# 5. Seed the database with demo data
+# 5. Seed the database with demo organization data
 python seed.py
 
 # 6. Start the development server
@@ -60,72 +92,32 @@ uvicorn app.main:app --reload
 # Visit http://localhost:8000
 ```
 
-> **Note**: No manual database setup is needed. SQLite tables are auto-created on first run.
+---
 
-## Deployment (Render)
+## Onboarding & Setup Instructions
 
-Follow these steps to deploy CollabHub to [Render](https://render.com):
+1. **Sign Up**: Go to the `/signup` page. Enter your **Organization Name**, full name, email, and password.
+2. **Setup Workspace**: Upon signup, you will be redirected to `/onboarding`.
+3. **Configure API Key**: Input your **Google Gemini API Key** (retrieve one at [Google AI Studio](https://aistudio.google.com/apikey)).
+4. **Provision Employees**: Fill in details under "Add Team Member" to register managers, senior developers, junior developers, and members with temporary passwords.
+5. **Begin Collaborating**: Click **Finish Onboarding** to go to your dashboard, create projects, assign members, and upload documents!
 
-1. **Push your code** to a GitHub repository.
-
-2. Go to [render.com](https://render.com) and create a **New Web Service**.
-
-3. **Connect** your GitHub repository.
-
-4. **Configure** the service:
-   - **Build Command**: `pip install -r requirements.txt && python seed.py`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-
-5. Add **Environment Variables** in the Render dashboard:
-
-   | Variable        | Value                                    |
-   | --------------- | ---------------------------------------- |
-   | `SECRET_KEY`    | A randomly generated 32+ character string |
-   | `GEMINI_API_KEY`| Your Google Gemini API key               |
-   | `DATABASE_URL`  | `sqlite:///./collabhub.db`               |
-   | `MAX_FILE_SIZE` | `10485760`                               |
-
-6. Click **Deploy** — your app will be live at `https://your-app.onrender.com`.
-
-> **Note**: On Render's free tier, the filesystem is ephemeral. The SQLite database (and all uploaded documents stored as BLOBs within it) will be reset on each redeploy. The seed script runs during build, so demo data will always be available. For persistent storage, use Render's paid tier with a Persistent Disk.
-
-## AI Feature — LLM Provider Disclosure
-
-| Detail        | Description                                                                      |
-| ------------- | -------------------------------------------------------------------------------- |
-| **Provider**  | Google Gemini (Google AI Studio)                                                 |
-| **Model**     | `gemini-2.5-flash`                                                               |
-| **Setup**     | BYOK (Bring Your Own Key) — set the `GEMINI_API_KEY` environment variable        |
-| **Get a key** | [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey)         |
-
-### AI-Powered Features
-
-- **Auto-Summarization** — When a document is uploaded, its text is extracted and sent to Gemini for a 2–3 sentence summary that is stored alongside the document.
-- **Semantic Search** — Natural-language queries are compared against stored document summaries by the LLM, which returns the best-matching documents with a one-line explanation of relevance.
-
-> **Without an API key**: The app runs normally, but AI summaries will show a placeholder message and search will return no results.
+---
 
 ## Demo Login Credentials
 
-Three pre-seeded accounts are available for testing the role hierarchy:
+Demo credentials are seeded under the `"CollabHub Demo"` organization:
 
 | Role             | Email               | Password  |
 | ---------------- | ------------------- | --------- |
-| **Member**       | employee@demo.com   | `demo123` |
-| **Manager**      | manager@demo.com    | `demo123` |
 | **Admin (CEO)**  | ceo@demo.com        | `demo123` |
+| **Manager**      | manager@demo.com    | `demo123` |
+| **Senior Dev**   | srdev@demo.com      | `demo123` |
+| **Junior Dev**   | jrdev@demo.com      | `demo123` |
+| **Member**       | employee@demo.com   | `demo123` |
+| **Guest**        | guest@demo.com      | `demo123` |
 
-## Known Limitations & Assumptions
-
-- **SQLite** — Single-writer database; not suitable for high-concurrency production workloads. For production, consider migrating to PostgreSQL.
-- **File Storage** — Documents are stored as BLOBs in SQLite. This works well for files under 10 MB but is not ideal for large-scale document management.
-- **Render Free Tier** — Filesystem is ephemeral — the SQLite database and all data reset on each redeploy. The seed script ensures demo data is always available.
-- **PDF Extraction** — Text extraction quality depends on PDF structure. Scanned/image-based PDFs may yield poor or no text, resulting in less useful AI summaries.
-- **No Email Verification** — Signup does not require email confirmation.
-- **No Password Reset** — There is no forgot-password or password-reset flow.
-- **No Real-Time Updates** — The app uses traditional request/response — no WebSocket or live notifications.
-- **AI Dependency** — Summarization and search features require a valid Google Gemini API key and network connectivity to Google's API.
-- **Session Duration** — JWT tokens expire after 24 hours; users will need to log in again.
+---
 
 ## Project Structure
 
@@ -133,16 +125,18 @@ Three pre-seeded accounts are available for testing the role hierarchy:
 collabhub/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI app entry point
+│   ├── main.py              # FastAPI application entry point
 │   ├── config.py            # Environment configuration
 │   ├── models.py            # SQLAlchemy database models
-│   ├── auth.py              # Authentication & authorization
+│   ├── auth.py              # Authentication, authorization, audit logging
+│   ├── common_templates.py  # Centralized Jinja2 templates config & IST filters
 │   ├── routes/
 │   │   ├── __init__.py
-│   │   ├── users.py         # Auth, user management, dashboard
+│   │   ├── users.py         # Auth, onboarding, dashboard
 │   │   ├── projects.py      # Project CRUD & member management
 │   │   ├── documents.py     # Document upload, download, delete
-│   │   └── ai.py            # AI summarization & search
+│   │   ├── chat.py          # Real-time WebSocket conversations
+│   │   └── ai.py            # AI summarization, search, chat catch-up
 │   ├── templates/           # Jinja2 HTML templates
 │   │   ├── base.html
 │   │   ├── login.html
@@ -150,6 +144,8 @@ collabhub/
 │   │   ├── dashboard.html
 │   │   ├── error.html
 │   │   ├── search_results.html
+│   │   ├── chat.html
+│   │   ├── onboarding.html
 │   │   ├── projects/
 │   │   │   ├── list.html
 │   │   │   ├── detail.html
@@ -163,11 +159,11 @@ collabhub/
 │       │   └── style.css
 │       └── js/
 │           └── main.js
-├── seed.py                  # Database seeder with demo data
+├── seed.py                  # Database seeder with demo organization data
 ├── requirements.txt         # Pinned Python dependencies
 ├── .env.example             # Environment variable template
 ├── .gitignore
-├── Procfile                 # Render deployment
+├── Procfile                 # Render deployment script
 └── README.md
 ```
 
