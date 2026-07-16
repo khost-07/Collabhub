@@ -1,12 +1,11 @@
 """
 CollabHub Database Seeder
 =========================
-Populates the database with demo users, projects, documents, and audit logs.
+Populates the database with demo users, projects, roles, and audit logs.
 Run: python seed.py
 """
 
 import sys
-import io
 
 # Reconfigure stdout/stderr to UTF-8 to prevent encoding crashes on Windows
 if hasattr(sys.stdout, 'reconfigure'):
@@ -15,7 +14,7 @@ if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
 try:
-    from app.models import engine, Base, SessionLocal, User, Project, ProjectMember, Document, AuditLog
+    from app.models import engine, Base, SessionLocal, User, Project, ProjectRole, Document, AuditLog
     from app.auth import hash_password
 except ImportError as e:
     print(f"[Import Error] {e}")
@@ -26,7 +25,7 @@ except ImportError as e:
 def seed():
     """Populate the database with demo data."""
     print("============================================================")
-    print("  CollabHub - Database Seeder")
+    print("  CollabHub - Database Seeder (Role-Based Access)")
     print("============================================================")
     print()
 
@@ -45,13 +44,19 @@ def seed():
 
         existing_admin = session.query(User).filter_by(email="ceo@demo.com").first()
         existing_manager = session.query(User).filter_by(email="manager@demo.com").first()
+        existing_srdev = session.query(User).filter_by(email="srdev@demo.com").first()
+        existing_jrdev = session.query(User).filter_by(email="jrdev@demo.com").first()
         existing_member = session.query(User).filter_by(email="employee@demo.com").first()
+        existing_guest = session.query(User).filter_by(email="guest@demo.com").first()
 
-        if existing_admin or existing_manager or existing_member:
+        if existing_admin or existing_manager or existing_srdev or existing_jrdev or existing_member or existing_guest:
             print("   [-] Demo users already exist - skipping user creation.")
-            admin = existing_admin
-            manager = existing_manager
-            member = existing_member
+            admin = existing_admin or session.query(User).filter_by(email="ceo@demo.com").first()
+            manager = existing_manager or session.query(User).filter_by(email="manager@demo.com").first()
+            srdev = existing_srdev or session.query(User).filter_by(email="srdev@demo.com").first()
+            jrdev = existing_jrdev or session.query(User).filter_by(email="jrdev@demo.com").first()
+            member = existing_member or session.query(User).filter_by(email="employee@demo.com").first()
+            guest = existing_guest or session.query(User).filter_by(email="guest@demo.com").first()
         else:
             admin = User(
                 name="Alex Chen (CEO)",
@@ -65,29 +70,50 @@ def seed():
                 hashed_password=hash_password("demo123"),
                 role="manager",
             )
+            srdev = User(
+                name="Taylor Vance (Sr Dev)",
+                email="srdev@demo.com",
+                hashed_password=hash_password("demo123"),
+                role="senior_developer",
+            )
+            jrdev = User(
+                name="Morgan Lee (Jr Dev)",
+                email="jrdev@demo.com",
+                hashed_password=hash_password("demo123"),
+                role="junior_developer",
+            )
             member = User(
                 name="Sam Wilson (Employee)",
                 email="employee@demo.com",
                 hashed_password=hash_password("demo123"),
                 role="member",
             )
+            guest = User(
+                name="Hacker User (Guest)",
+                email="guest@demo.com",
+                hashed_password=hash_password("demo123"),
+                role="guest",
+            )
 
-            session.add_all([admin, manager, member])
+            session.add_all([admin, manager, srdev, jrdev, member, guest])
             session.flush()  # Populate IDs
 
             print(f"   [+] Admin   - Alex Chen (CEO)        | ceo@demo.com")
             print(f"   [+] Manager - Jordan Miller (Manager) | manager@demo.com")
+            print(f"   [+] Sr Dev  - Taylor Vance (Sr Dev)   | srdev@demo.com")
+            print(f"   [+] Jr Dev  - Morgan Lee (Jr Dev)    | jrdev@demo.com")
             print(f"   [+] Member  - Sam Wilson (Employee)   | employee@demo.com")
+            print(f"   [+] Guest   - Hacker User (Guest)    | guest@demo.com")
 
             # Audit logs for user creation
-            for user in [admin, manager, member]:
+            for u in [admin, manager, srdev, jrdev, member, guest]:
                 session.add(AuditLog(
-                    user_id=user.id,
-                    user_email=user.email,
+                    user_id=u.id,
+                    user_email=u.email,
                     action="user_created",
                     resource_type="user",
-                    resource_id=user.id,
-                    details=f"Seeded demo user: {user.name} ({user.role})",
+                    resource_id=u.id,
+                    details=f"Seeded demo user: {u.name} ({u.role})",
                 ))
 
         print()
@@ -150,35 +176,34 @@ def seed():
         print()
 
         # ------------------------------------------------------------------
-        # 3. ASSIGN PROJECT MEMBERS
+        # 3. ASSIGN PROJECT ROLES
         # ------------------------------------------------------------------
-        print("[*] Assigning project members...")
+        print("[*] Assigning project roles...")
 
-        members_added = 0
-        for project in [project1, project2]:
-            for user in [admin, manager, member]:
-                exists = session.query(ProjectMember).filter_by(
-                    project_id=project.id, user_id=user.id
+        roles_added = 0
+        # Project 1 (Product Launch Q3) allows: admin, manager, senior_developer, junior_developer
+        # Project 2 (Internal Documentation) allows: admin, manager, senior_developer, junior_developer, member, guest (full public access)
+        project_roles_map = {
+            project1.id: ["admin", "manager", "senior_developer", "junior_developer"],
+            project2.id: ["admin", "manager", "senior_developer", "junior_developer", "member", "guest"]
+        }
+
+        for pid, roles in project_roles_map.items():
+            for role_name in roles:
+                exists = session.query(ProjectRole).filter_by(
+                    project_id=pid, role=role_name
                 ).first()
                 if not exists:
-                    session.add(ProjectMember(
-                        project_id=project.id,
-                        user_id=user.id,
+                    session.add(ProjectRole(
+                        project_id=pid,
+                        role=role_name,
                     ))
-                    session.add(AuditLog(
-                        user_id=user.id,
-                        user_email=user.email,
-                        action="member_added",
-                        resource_type="project",
-                        resource_id=project.id,
-                        details=f"{user.name} added to project: {project.name}",
-                    ))
-                    members_added += 1
+                    roles_added += 1
 
-        if members_added > 0:
-            print(f"   [+] {members_added} member assignments created.")
+        if roles_added > 0:
+            print(f"   [+] {roles_added} role access rules created.")
         else:
-            print("   [-] All member assignments already exist - skipping.")
+            print("   [-] All role access rules already exist - skipping.")
 
         print()
 
@@ -332,13 +357,16 @@ def seed():
         print("============================================================")
         print()
         print("  Demo Login Credentials:")
-        print("  +------------+---------------------+----------+")
-        print("  | Role       | Email               | Password |")
-        print("  +------------+---------------------+----------+")
-        print("  | Admin      | ceo@demo.com        | demo123  |")
-        print("  | Manager    | manager@demo.com    | demo123  |")
-        print("  | Member     | employee@demo.com   | demo123  |")
-        print("  +------------+---------------------+----------+")
+        print("  +------------------+---------------------+----------+")
+        print("  | Role             | Email               | Password |")
+        print("  +------------------+---------------------+----------+")
+        print("  | Admin            | ceo@demo.com        | demo123  |")
+        print("  | Manager          | manager@demo.com    | demo123  |")
+        print("  | Senior Developer | srdev@demo.com      | demo123  |")
+        print("  | Junior Developer | jrdev@demo.com      | demo123  |")
+        print("  | Member           | employee@demo.com   | demo123  |")
+        print("  | Guest            | guest@demo.com      | demo123  |")
+        print("  +------------------+---------------------+----------+")
         print()
         print("  Start the server with: uvicorn app.main:app --reload")
         print()

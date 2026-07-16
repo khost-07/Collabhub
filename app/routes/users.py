@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
-from app.models import get_db, User, Project, ProjectMember, Document, AuditLog
+from app.models import get_db, User, Project, ProjectRole, Document, AuditLog
 from app.auth import (
     hash_password,
     verify_password,
@@ -161,7 +161,7 @@ async def signup_post(request: Request, db: Session = Depends(get_db)):
         name=name,
         email=email,
         hashed_password=hash_password(password),
-        role="member",
+        role="guest",
     )
     db.add(new_user)
     db.commit()
@@ -236,11 +236,11 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             .all()
         )
     else:
-        # member
+        # member, developer, or guest
         member_project_ids = [
             row.project_id
-            for row in db.query(ProjectMember.project_id)
-            .filter(ProjectMember.user_id == user.id)
+            for row in db.query(ProjectRole.project_id)
+            .filter(ProjectRole.role == user.role)
             .all()
         ]
         stats["projects"] = db.query(func.count(Project.id)).scalar() or 0
@@ -303,7 +303,7 @@ async def update_user_role(
     form = await request.form()
     new_role = form.get("role", "").strip()
 
-    if new_role not in ("admin", "manager", "member"):
+    if new_role not in ("admin", "manager", "senior_developer", "junior_developer", "member", "guest"):
         return RedirectResponse(
             url="/users?message=Invalid+role&type=error",
             status_code=303,

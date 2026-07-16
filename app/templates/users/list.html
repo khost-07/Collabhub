@@ -35,7 +35,7 @@
             </div>
           </td>
           <td>{{ u.email }}</td>
-          <td><span class="badge badge-{{ u.role }}">{{ u.role|capitalize }}</span></td>
+          <td><span class="badge badge-{{ u.role }}">{{ u.role|replace('_', ' ')|title }}</span></td>
           <td>{{ u.created_at.strftime('%b %d, %Y') }}</td>
           <td>
             {% if u.id == user.id %}
@@ -45,7 +45,10 @@
               <select class="form-select" name="role" id="roleSelect{{ u.id }}">
                 <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
                 <option value="manager" {% if u.role == 'manager' %}selected{% endif %}>Manager</option>
+                <option value="senior_developer" {% if u.role == 'senior_developer' %}selected{% endif %}>Senior Developer</option>
+                <option value="junior_developer" {% if u.role == 'junior_developer' %}selected{% endif %}>Junior Developer</option>
                 <option value="member" {% if u.role == 'member' %}selected{% endif %}>Member</option>
+                <option value="guest" {% if u.role == 'guest' %}selected{% endif %}>Guest</option>
               </select>
               <button type="submit" class="btn btn-primary btn-sm" id="roleUpdate{{ u.id }}Btn">Update</button>
             </form>

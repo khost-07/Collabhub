@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import MAX_FILE_SIZE
-from app.models import get_db, Document, Project, ProjectMember
+from app.models import get_db, Document, Project, ProjectRole
 from app.auth import (
     require_login,
     require_manager_or_admin,
@@ -35,18 +35,20 @@ def _get_file_extension(filename: str) -> str:
 
 def _check_project_access(user, project, db: Session) -> None:
     """Raise NotAuthorizedException if user cannot access this project."""
-    if user.role in ("admin", "manager"):
+    if user.role == "admin":
         return
-    is_member = (
-        db.query(ProjectMember)
+    if user.role == "manager" and project.created_by == user.id:
+        return
+    is_allowed = (
+        db.query(ProjectRole)
         .filter(
-            ProjectMember.project_id == project.id,
-            ProjectMember.user_id == user.id,
+            ProjectRole.project_id == project.id,
+            ProjectRole.role == user.role,
         )
         .first()
     )
-    if not is_member:
-        raise NotAuthorizedException("You do not have access to this project.")
+    if not is_allowed:
+        raise NotAuthorizedException("Your role does not have access to this project.")
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +70,13 @@ async def upload_document(
 
     _check_project_access(user, project, db)
 
+    # --- Validate write-eligible role ---
+    if user.role not in ("admin", "manager", "senior_developer"):
+        return RedirectResponse(
+            url=f"/projects/{project_id}?message=Only+Admins%2C+Managers%2C+and+Senior+Developers+can+upload+documents&type=error",
+            status_code=303,
+        )
+
     # --- Validate file extension ---
     extension = _get_file_extension(file.filename or "")
     if extension not in ALLOWED_EXTENSIONS:
@@ -75,11 +84,6 @@ async def upload_document(
             url=f"/projects/{project_id}?message=Only+PDF+and+TXT+files+are+allowed&type=error",
             status_code=303,
         )
-
-    # --- Validate content type ---
-    if file.content_type and file.content_type not in ALLOWED_CONTENT_TYPES:
-        # Some browsers may send different content types; also accept by extension
-        pass  # Extension check above is the primary gate
 
     # --- Read file content ---
     file_content = await file.read()

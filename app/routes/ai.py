@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import GEMINI_API_KEY
-from app.models import get_db, Document, Project, ProjectMember
+from app.models import get_db, Document, Project, ProjectRole
 from app.auth import require_login
 
 logger = logging.getLogger(__name__)
@@ -157,18 +157,29 @@ async def search_post(request: Request, db: Session = Depends(get_db)):
         )
 
     # Determine which documents the user may access
-    if user.role in ("admin", "manager"):
+    if user.role == "admin":
         documents = db.query(Document).all()
-    else:
-        # Member: only documents from projects they are assigned to
-        member_project_ids = (
-            db.query(ProjectMember.project_id)
-            .filter(ProjectMember.user_id == user.id)
+    elif user.role == "manager":
+        allowed_project_ids = (
+            db.query(ProjectRole.project_id)
+            .filter(ProjectRole.role == "manager")
             .subquery()
         )
         documents = (
             db.query(Document)
-            .filter(Document.project_id.in_(member_project_ids))
+            .join(Project)
+            .filter((Project.created_by == user.id) | Document.project_id.in_(allowed_project_ids))
+            .all()
+        )
+    else:
+        allowed_project_ids = (
+            db.query(ProjectRole.project_id)
+            .filter(ProjectRole.role == user.role)
+            .subquery()
+        )
+        documents = (
+            db.query(Document)
+            .filter(Document.project_id.in_(allowed_project_ids))
             .all()
         )
 

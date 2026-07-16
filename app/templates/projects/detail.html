@@ -53,7 +53,7 @@
   </div>
 </div>
 
-<!-- Members Section -->
+<!-- Allowed Roles Section -->
 <div class="section">
   <div class="card">
     <div class="card-header">
@@ -64,46 +64,41 @@
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
           <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
-        Members
+        Allowed Roles
       </h3>
     </div>
 
-    <!-- Current Members -->
-    {% if members and members|length > 0 %}
+    <!-- Current Allowed Roles -->
+    {% if allowed_roles and allowed_roles|length > 0 %}
     <div class="members-grid" style="margin-bottom:20px">
-      {% for member in members %}
-      <span class="member-chip">
-        <svg class="icon" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-          <circle cx="12" cy="7" r="4"/>
-        </svg>
-        {{ member.name }}
+      {% for role in allowed_roles %}
+      <span class="badge badge-{{ role }}">
+        {{ role|replace('_', ' ')|capitalize }}
       </span>
       {% endfor %}
     </div>
     {% else %}
-    <p style="color:var(--text-muted);margin-bottom:20px;font-size:0.875rem">No members assigned to this project.</p>
+    <p style="color:var(--text-muted);margin-bottom:20px;font-size:0.875rem">No role access restrictions configured (Admin only).</p>
     {% endif %}
 
-    <!-- Manage Members (admin/manager only) -->
+    <!-- Manage Roles (admin/manager only) -->
     {% if user.role in ('admin', 'manager') %}
     <div style="border-top:1px solid var(--border);padding-top:20px">
-      <h4 style="font-size:0.9375rem;margin-bottom:12px;color:var(--text-secondary)">Manage Members</h4>
-      <form method="POST" action="/projects/{{ project.id }}/members" id="manageMembersForm">
-        <div class="form-checkbox-group" id="memberCheckboxes">
-          {% for u in all_users %}
+      <h4 style="font-size:0.9375rem;margin-bottom:12px;color:var(--text-secondary)">Configure Role Access</h4>
+      <form method="POST" action="/projects/{{ project.id }}/roles" id="manageRolesForm">
+        <div class="form-checkbox-group" id="roleCheckboxes">
+          {% for r in available_roles %}
           <label class="form-checkbox-label">
-            <input type="checkbox" name="member_ids" value="{{ u.id }}" {% if u.id in members|map(attribute='id')|list %}checked{% endif %}>
-            <span>{{ u.name }}</span>
-            <span class="badge badge-{{ u.role }}" style="margin-left:auto;font-size:0.6875rem">{{ u.role|capitalize }}</span>
+            <input type="checkbox" name="roles" value="{{ r.id }}" {% if r.id in allowed_roles %}checked{% endif %}>
+            <span>{{ r.name }}</span>
           </label>
           {% endfor %}
         </div>
-        <button type="submit" class="btn btn-primary btn-sm" style="margin-top:16px" id="updateMembersBtn">
+        <button type="submit" class="btn btn-primary btn-sm" style="margin-top:16px" id="updateRolesBtn">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
-          Update Members
+          Update Role Access
         </button>
       </form>
     </div>
@@ -125,6 +120,7 @@
     </div>
 
     <!-- Upload Form -->
+    {% if user.role in ('admin', 'manager', 'senior_developer') %}
     <form method="POST" action="/projects/{{ project.id }}/documents/upload" enctype="multipart/form-data" id="uploadForm" style="margin-bottom:24px">
       <div class="file-upload-area" id="fileUploadArea">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -147,6 +143,7 @@
         Upload Document
       </button>
     </form>
+    {% endif %}
 
     <!-- Documents Table -->
     {% if documents and documents|length > 0 %}

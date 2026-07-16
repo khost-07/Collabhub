@@ -36,25 +36,9 @@ class Base(DeclarativeBase):
 
 
 # ---------------------------------------------------------------------------
-# Association table for many-to-many: projects <-> users
+# Project Roles Table (mapped to ProjectRole model)
 # ---------------------------------------------------------------------------
 
-project_members = Table(
-    "project_members",
-    Base.metadata,
-    Column(
-        "project_id",
-        Integer,
-        ForeignKey("projects.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "user_id",
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +77,12 @@ class Project(Base):
     )
 
     creator = relationship("User", foreign_keys=[created_by])
-    members = relationship("User", secondary=project_members, lazy="joined")
+    allowed_roles = relationship(
+        "ProjectRole",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        lazy="joined",
+    )
     documents = relationship(
         "Document",
         back_populates="project",
@@ -105,23 +94,17 @@ class Project(Base):
         return f"<Project id={self.id} name={self.name}>"
 
 
-class ProjectMember(Base):
-    __tablename__ = "project_members"
+class ProjectRole(Base):
+    __tablename__ = "project_roles"
 
     project_id = Column(
         Integer,
         ForeignKey("projects.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    user_id = Column(
-        Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
+    role = Column(String(50), primary_key=True)
 
-    # Tell SQLAlchemy this model maps to the same table as the association
-    # table defined above.  extend_existing avoids a metadata conflict.
-    __table_args__ = {"extend_existing": True}
+    project = relationship("Project", back_populates="allowed_roles")
 
 
 class Document(Base):
