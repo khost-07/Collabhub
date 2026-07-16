@@ -70,7 +70,7 @@ def summarize_document(text: str, api_key: Optional[str]) -> str:
 
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-3.5-flash",
+            model="gemini-2.5-flash-lite",
             contents=(
                 "Summarize the following document in 2-3 concise sentences. "
                 "Be specific about key topics and findings:\n\n"
@@ -116,7 +116,7 @@ def search_documents(query: str, documents: list, api_key: Optional[str]) -> lis
 
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-3.5-flash",
+            model="gemini-2.5-flash-lite",
             contents=prompt,
         )
         response_text = response.text.strip()
@@ -269,7 +269,7 @@ def summarize_project_files(project_id: int, request: Request, db: Session = Dep
 
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-3.5-flash",
+            model="gemini-2.5-flash-lite",
             contents=(
                 "You are an expert project assistant. Provide a cohesive, unified executive summary "
                 "of the following project documents. Highlight the main goals, statuses, findings, "
@@ -354,7 +354,7 @@ def chat_catch_up(conversation_id: int, request: Request, db: Session = Depends(
 
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-3.5-flash",
+            model="gemini-2.5-flash-lite",
             contents=(
                 "You are an AI chat assistant. Catch the user up by summarizing the following recent chat messages "
                 "in 3-4 bullet points. Focus on key decisions, questions, outcomes, or action items discussed:\n\n"
